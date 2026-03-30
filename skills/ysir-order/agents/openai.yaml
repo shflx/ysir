@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-order"
+  short_description: "帮助把模糊想法收敛为清晰需求、范围边界和验收标准草案"
+  default_prompt: "使用 $requirements-discovery 帮我梳理这个想法的需求，补齐缺失约束并输出结构化结果。"

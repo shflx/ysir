@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-movout"
+  short_description: "根据要求完成落地实现"
+  default_prompt: "使用 $ysir-movout 根据要求完成落地实现."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-plan"
+  short_description: "根据需求文档和仓库上下文形成可落地、可确认的实现方案文档。"
+  default_prompt: "使用 $ysir-plan 形成可落地、可确认的实现方案文档."
