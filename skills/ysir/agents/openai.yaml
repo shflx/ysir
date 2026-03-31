@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir"
+  short_description: "以高质量、可审计的方式完成端到端实现"
+  default_prompt: "使用 $ysir 以高质量、可审计的方式完成端到端实现."
