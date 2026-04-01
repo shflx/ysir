@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-inspect"
+  short_description: "检查实现是否与设计、需求和方案保持一致"
+  default_prompt: "使用 $ysir-inspect 检查实现是否与设计、需求和方案保持一致."
