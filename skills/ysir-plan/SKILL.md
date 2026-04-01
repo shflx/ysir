@@ -61,6 +61,6 @@ description: 根据需求文档和仓库上下文形成可落地、可确认的�
 
 ### 2.输出
 
-- 方案文档格式必须符合 [`references/plan.md`](./references/plan-template.md)
+- 方案文档格式必须符合 [`references/plan.md`](./references/plan.md)
 
-- 默认输出路径: `.report/{日期}-{需求简短描述}/plan.md`
+- 默认输出路径: `.report/in-progress/{日期}-{需求简短描述}/plan.md`
