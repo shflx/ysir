@@ -28,7 +28,7 @@ YSIR 将一组面向交付的工程约束拆成独立技能，并把它们接入
 ### 安装
 
 ```bash
-git clone https://github.com/shuffleyxf/ysir.git
+git clone https://github.com/shflx/ysir.git
 cd ysir
 node ysir.js
 ```
