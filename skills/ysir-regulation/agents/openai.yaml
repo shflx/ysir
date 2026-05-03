@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-regulation"
+  short_description: "提供通用、开发、提交等规范模板，供其他技能按需引用和复用。"
+  default_prompt: "使用 $ysir-regulation 提供当前任务所需的规范约束."
