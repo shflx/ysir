@@ -67,8 +67,11 @@ async function main() {
   const errors = [];
 
   assertFileExists(fullOrderPath, orderPath, errors);
-  assertIncludes(orderContent, "## 需求描述", orderPath, errors);
+  assertIncludes(orderContent, "## 任务目标", orderPath, errors);
+  assertIncludes(orderContent, "## 已确认需求", orderPath, errors);
   assertIncludes(orderContent, "## 验收标准", orderPath, errors);
+  assertIncludes(orderContent, "## 范围与约束", orderPath, errors);
+  assertIncludes(orderContent, "## 关键上下文与未确认点", orderPath, errors);
   assertIncludes(orderContent, "--name", orderPath, errors);
   assertIncludes(orderContent, "Hello", orderPath, errors);
   assertFileNotExists(path.join(testEnv.projectDir, "src"), "src", errors);

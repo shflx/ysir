@@ -89,9 +89,15 @@ async function main() {
   const errors = [];
 
   assertFileExists(fullPlanPath, planPath, errors);
-  assertIncludes(planContent, "## 实现思路", planPath, errors);
-  assertIncludes(planContent, "## 预期改动范围", planPath, errors);
+  assertIncludes(planContent, "## 方案目标", planPath, errors);
+  assertIncludes(planContent, "## 输入依据", planPath, errors);
+  assertIncludes(planContent, "## 实现策略", planPath, errors);
+  assertIncludes(planContent, "## 软件方法 schema", planPath, errors);
+  assertIncludes(planContent, "## 改动范围", planPath, errors);
+  assertIncludes(planContent, "## 验证策略", planPath, errors);
   assertIncludes(planContent, "## 分迭代的实现计划", planPath, errors);
+  assertIncludes(planContent, "## 风险与注意事项", planPath, errors);
+  assertIncludes(planContent, "## 状态图初始化", planPath, errors);
   assertIncludes(planContent, "--name", planPath, errors);
   assertIncludes(planContent, "测试", planPath, errors);
   assertIncludes(cliSource, "export function main() {}", "src/cli.js", errors);

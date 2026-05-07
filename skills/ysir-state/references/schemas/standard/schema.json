@@ -1,0 +1,42 @@
+{
+  "name": "standard",
+  "description": "把每个计划阶段展开为标准开发流程：开发、验收测试、代码审查、提交代码。",
+  "subStages": [
+    {
+      "id": "develop",
+      "label": "开发",
+      "objective": "根据当前计划阶段完成工程实现，并保持实现范围与需求、设计和计划一致。"
+    },
+    {
+      "id": "acceptance-test",
+      "label": "验收：测试",
+      "objective": "执行与当前阶段改动匹配的测试或验证，确认实现满足需求且未引入明显回归。",
+      "template": "test.md"
+    },
+    {
+      "id": "acceptance-review",
+      "label": "验收：代码审查",
+      "objective": "审查当前阶段实现的正确性、可维护性、风险和规范符合性，并推动必要整改。",
+      "template": "code-review.md"
+    },
+    {
+      "id": "delivery-commit",
+      "label": "交付：提交代码",
+      "objective": "提交本次阶段对应的代码改动，并保留提交哈希或等价完成依据。"
+    }
+  ],
+  "edges": [
+    {
+      "from": "develop",
+      "to": "acceptance-test"
+    },
+    {
+      "from": "acceptance-test",
+      "to": "acceptance-review"
+    },
+    {
+      "from": "acceptance-review",
+      "to": "delivery-commit"
+    }
+  ]
+}

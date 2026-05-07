@@ -1,4 +1,4 @@
 interface:
   display_name: "ysir-moveout"
-  short_description: "根据要求完成落地实现"
-  default_prompt: "使用 $ysir-moveout 根据要求完成落地实现."
+  short_description: "落地当前需求并推进状态门禁"
+  default_prompt: "使用 $ysir-moveout 落地当前需求，并通过状态图推进进度门禁。"

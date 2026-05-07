@@ -5,12 +5,10 @@
 const path = require("node:path");
 
 const {
-  assertFileExists,
   assertFileNotExists,
   assertIncludes,
   assertMatches,
   assertNotIncludes,
-  assertNotMatches,
   cleanupFixture,
   createFixture,
   readFileIfExists,
@@ -48,7 +46,7 @@ function setupProject(projectDir) {
     [
       "## 项目定位",
       "",
-      "- 用于验证 ysir-moveout 标准实现流程的最小项目。",
+      "- 用于验证 ysir-moveout 状态图执行器的最小项目。",
       "",
       "## 技术选型",
       "",
@@ -61,7 +59,7 @@ function setupProject(projectDir) {
   writeFile(
     path.join(projectDir, `${TASK_DIR}/order.md`),
     [
-      "## 需求描述",
+      "## 任务目标",
       "",
       "- 为 `src/calc.js` 增加基础计算函数。",
       "",
@@ -76,36 +74,93 @@ function setupProject(projectDir) {
   writeFile(
     path.join(projectDir, `${TASK_DIR}/plan.md`),
     [
-      "## 实现思路",
+      "## 方案目标",
       "",
       "- 使用 `src/calc.js` 导出计算函数。",
-      "- 使用 `node:test` 编写单元测试。",
-      "",
-      "## 预期改动范围",
-      "",
-      "- `src/calc.js`",
-      "- `test/calc.test.js`",
       "",
       "## 分迭代的实现计划",
       "",
-      "- 迭代1: 新增 `add(a, b)`，包含实现、单元测试和验证。",
+      "### 迭代 1: add",
       "",
-      "- 迭代2: 新增 `multiply(a, b)`，包含实现、单元测试和验证。",
+      "- 目标: 新增 `add(a, b)`。",
+      "- 改动: `src/calc.js`",
+      "- 验证: 当前节点只负责开发，不执行测试。",
       "",
-      "## 已完成列表",
+      "### 迭代 2: multiply",
       "",
+      "- 目标: 新增 `multiply(a, b)`。",
+      "- 改动: `src/calc.js`",
+      "",
+      "## 状态图初始化",
+      "",
+      "- state: `.report/in-progress/2026-04-10-calc/state.json`",
+      "- nodes: add,multiply",
+      "- edges: add>multiply",
     ].join("\n")
+  );
+
+  writeFile(
+    path.join(projectDir, `${TASK_DIR}/state.json`),
+    `${JSON.stringify(
+      {
+        version: 1,
+        current: "add:develop",
+        schema: {
+          name: "standard",
+          path: "skills/ysir-state/references/schemas/standard/schema.json",
+        },
+        nodes: {
+          "add:develop": {
+            id: "add:develop",
+            phase: "add",
+            stage: "develop",
+            label: "开发",
+            status: "current",
+            note: "",
+          },
+          "add:acceptance-test": {
+            id: "add:acceptance-test",
+            phase: "add",
+            stage: "acceptance-test",
+            label: "验收：测试",
+            template: "skills/ysir-state/references/schemas/standard/test.md",
+            status: "pending",
+            note: "",
+          },
+          "multiply:develop": {
+            id: "multiply:develop",
+            phase: "multiply",
+            stage: "develop",
+            label: "开发",
+            status: "pending",
+            note: "",
+          },
+        },
+        edges: [
+          {
+            from: "add:develop",
+            to: "add:acceptance-test",
+          },
+          {
+            from: "add:acceptance-test",
+            to: "multiply:develop",
+          },
+        ],
+        history: [],
+        updatedAt: "2026-04-10T00:00:00.000Z",
+      },
+      null,
+      2
+    )}\n`
   );
 }
 
 async function main() {
   const testEnv = createFixture("ysir-moveout-it-", setupProject);
   const prompt = [
-    `在当前项目中使用 $ysir-moveout 执行 ${TASK_DIR}/plan.md。`,
-    "严格遵循技能要求和计划文档。",
-    "只执行计划中的第一个未完成迭代，不要进入后续迭代。",
-    // 非交互测试没有用户验收输入，必须把“请求验收”作为退出点。
-    "当前是非交互集成测试；到达人工验收节点时，请在最终回复中请求用户验收并立即退出，不要等待输入、不要提交代码。",
+    `在当前项目中使用 $ysir-moveout 执行 ${TASK_DIR}/state.json 的当前节点。`,
+    "当前节点是 add:develop，只负责实现 add(a, b)；不要执行测试节点、不要创建测试报告或代码审查报告、不要提交代码。",
+    "当前是非交互集成测试；完成当前节点后更新 state.json 到下一个节点并退出。",
   ].join("\n");
 
   console.log(`Integration fixture: ${testEnv.projectDir}`);
@@ -113,44 +168,27 @@ async function main() {
 
   const calcSource = readFileIfExists(path.join(testEnv.projectDir, "src/calc.js"));
   const calcTest = readFileIfExists(path.join(testEnv.projectDir, "test/calc.test.js"));
-  const planContent = readFileIfExists(path.join(testEnv.projectDir, `${TASK_DIR}/plan.md`));
   const testReportPath = path.join(testEnv.projectDir, `${TASK_DIR}/test-round-1.md`);
   const codeReviewPath = path.join(testEnv.projectDir, `${TASK_DIR}/cr-round-1.md`);
-  const testReport = readFileIfExists(testReportPath);
-  const codeReview = readFileIfExists(codeReviewPath);
+  const stateContent = readFileIfExists(path.join(testEnv.projectDir, `${TASK_DIR}/state.json`));
   const gitStatus = runCommand("git", ["status", "--short"], { cwd: testEnv.projectDir });
   const gitLog = runCommand("git", ["log", "--oneline"], { cwd: testEnv.projectDir });
   const output = `${stdout}\n${stderr}`;
   const errors = [];
 
-  // 标准流程验收点：完成当前迭代闭环，但不能提交、归档或进入后续迭代。
+  // 状态图执行器只完成当前节点，不跨入测试、审查或下一开发阶段。
   assertIncludes(calcSource, "add", "src/calc.js", errors);
-  assertIncludes(calcTest, "add", "test/calc.test.js", errors);
   assertNotIncludes(calcSource, "multiply", "src/calc.js", errors);
-  assertNotIncludes(calcTest, "multiply", "test/calc.test.js", errors);
-  assertMatches(output, /验收|确认/, "agent output", errors);
+  assertNotIncludes(calcTest, "add", "test/calc.test.js", errors);
+  assertMatches(stateContent, /"current":\s*"add:acceptance-test"/, `${TASK_DIR}/state.json`, errors);
+  assertMatches(stateContent, /"add:develop"[\s\S]*"status":\s*"completed"/, `${TASK_DIR}/state.json`, errors);
 
-  assertFileExists(testReportPath, `${TASK_DIR}/test-round-1.md`, errors);
-  assertFileExists(codeReviewPath, `${TASK_DIR}/cr-round-1.md`, errors);
-  assertIncludes(testReport, "## 遗留缺陷", `${TASK_DIR}/test-round-1.md`, errors);
-  assertIncludes(testReport, "## 结论", `${TASK_DIR}/test-round-1.md`, errors);
-  assertIncludes(testReport, "add", `${TASK_DIR}/test-round-1.md`, errors);
-  assertNotIncludes(testReport, "multiply(a, b)` 的实现", `${TASK_DIR}/test-round-1.md`, errors);
-  assertIncludes(codeReview, "## 问题汇总", `${TASK_DIR}/cr-round-1.md`, errors);
-  assertIncludes(codeReview, "## 审查总结", `${TASK_DIR}/cr-round-1.md`, errors);
-
-  assertMatches(planContent, /已完成列表[\s\S]*迭代1/, `${TASK_DIR}/plan.md`, errors);
-  assertNotMatches(planContent, /已完成列表[\s\S]*迭代2/, `${TASK_DIR}/plan.md`, errors);
+  assertFileNotExists(testReportPath, `${TASK_DIR}/test-round-1.md`, errors);
+  assertFileNotExists(codeReviewPath, `${TASK_DIR}/cr-round-1.md`, errors);
   assertNotIncludes(gitLog, "add(a, b)", "git log", errors);
-  assertMatches(gitStatus, /src\/calc\.js|test\/calc\.test\.js/, "git status", errors);
+  assertMatches(gitStatus, /src\/calc\.js|state\.json/, "git status", errors);
   assertFileNotExists(path.join(testEnv.projectDir, ".report/inspect"), ".report/inspect", errors);
   assertFileNotExists(path.join(testEnv.projectDir, ".report/done"), ".report/done", errors);
-
-  try {
-    runCommand(process.execPath, ["--test"], { cwd: testEnv.projectDir });
-  } catch (error) {
-    errors.push(`node --test failed:\n${error.message}`);
-  }
 
   reportErrors("YSIR moveout standard flow integration test", errors, output, testEnv);
   console.log("YSIR moveout standard flow integration test passed.");
