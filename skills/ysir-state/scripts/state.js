@@ -8,6 +8,7 @@ const path = require("node:path");
 const OBJECTIVE_PREFIX = "先使用 ysir-regulation 了解与本次行动相关的规范；然后";
 const DEFAULT_SCHEMA_PATH = path.join(__dirname, "../references/schemas/standard/schema.json");
 const DEFAULT_SCHEMA_DISPLAY_PATH = "skills/ysir-state/references/schemas/standard/schema.json";
+const HUMAN_ACCEPTANCE_STAGE = "human-acceptance";
 
 function fail(message) {
   console.error(message);
@@ -72,6 +73,16 @@ function parseEdge(edge) {
   return { from, to };
 }
 
+function parseBoolean(value) {
+  if (value === true) {
+    return true;
+  }
+  if (!value) {
+    return false;
+  }
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
 function assertUnique(values, label) {
   const seen = new Set();
   for (const value of values) {
@@ -132,6 +143,23 @@ function makeAttemptNodeId(phaseId, attempt, stageId) {
   return attempt > 1 ? `${phaseId}@${attempt}:${stageId}` : `${phaseId}:${stageId}`;
 }
 
+function expandHumanAcceptanceStage(phaseId, attempt = 1) {
+  const id = makeAttemptNodeId(phaseId, attempt, HUMAN_ACCEPTANCE_STAGE);
+  return {
+    id,
+    phase: phaseId,
+    stage: HUMAN_ACCEPTANCE_STAGE,
+    label: "人工验收",
+    objective: "等待用户对当前计划阶段成果进行人工验收；用户确认后继续推进。",
+    ...(attempt > 1
+      ? {
+        attempt,
+        retryOf: makeAttemptNodeId(phaseId, 1, HUMAN_ACCEPTANCE_STAGE),
+      }
+      : {}),
+  };
+}
+
 function resolveSchemaPath(schemaPath) {
   if (!schemaPath) {
     fail("当前状态图缺少 schema，无法重试");
@@ -152,7 +180,7 @@ function resolveSchemaPath(schemaPath) {
   return cwdPath;
 }
 
-function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaPath) {
+function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaPath, options = {}) {
   const schema = readJson(schemaPath);
   const schemaDir = path.dirname(schemaDisplayPath);
   if (!Array.isArray(schema.subStages) || schema.subStages.length === 0) {
@@ -171,6 +199,9 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
       }
       expandedNodes.push(expandSubStage(phaseId, subStage, schemaDir));
     }
+    if (options.humanAcceptance) {
+      expandedNodes.push(expandHumanAcceptanceStage(phaseId));
+    }
 
     for (const edge of schemaEdges) {
       if (!edge.from || !edge.to) {
@@ -179,6 +210,12 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
       expandedEdges.push({
         from: `${phaseId}:${edge.from}`,
         to: `${phaseId}:${edge.to}`,
+      });
+    }
+    if (options.humanAcceptance) {
+      expandedEdges.push({
+        from: `${phaseId}:${schema.subStages[schema.subStages.length - 1].id}`,
+        to: `${phaseId}:${HUMAN_ACCEPTANCE_STAGE}`,
       });
     }
   }
@@ -193,10 +230,11 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
       fail(`阶段边引用了不存在的节点: ${transition.from}>${transition.to}`);
     }
     const lastStage = schema.subStages[schema.subStages.length - 1].id;
+    const phaseExitStage = options.humanAcceptance ? HUMAN_ACCEPTANCE_STAGE : lastStage;
     const firstStage = schema.subStages[0].id;
     // 跨计划阶段时，只连接阶段边界，避免把 schema 内部流程和计划依赖混在一起。
     expandedEdges.push({
-      from: `${transition.from}:${lastStage}`,
+      from: `${transition.from}:${phaseExitStage}`,
       to: `${transition.to}:${firstStage}`,
     });
   }
@@ -217,8 +255,9 @@ function createState(args) {
   const inputEdges = parseList(args.edges).map(parseEdge);
   const schemaPath = args.schema === "none" ? "" : (args.schema || DEFAULT_SCHEMA_PATH);
   const schemaDisplayPath = args.schema ? args.schema : DEFAULT_SCHEMA_DISPLAY_PATH;
+  const humanAcceptance = parseBoolean(args["human-acceptance"]);
   const expanded = schemaPath
-    ? expandSchema(inputNodes, inputEdges, schemaPath, schemaDisplayPath)
+    ? expandSchema(inputNodes, inputEdges, schemaPath, schemaDisplayPath, { humanAcceptance })
     : {
       schema: null,
       nodes: inputNodes.map((id) => ({ id })),
@@ -245,6 +284,7 @@ function createState(args) {
     version: 1,
     current,
     schema: expanded.schema,
+    humanAcceptance,
     nodes: Object.fromEntries(
       expanded.nodes.map((node) => [
         node.id,
@@ -373,9 +413,11 @@ function retryNode(state, args) {
   const schemaDir = path.dirname(state.schema.path);
   const firstStage = subStages[0].id;
   const lastStage = subStages[subStages.length - 1].id;
-  const oldTailId = makeAttemptNodeId(phaseId, currentAttempt, lastStage);
+  const hasHumanAcceptance = state.humanAcceptance === true;
+  const tailStage = hasHumanAcceptance ? HUMAN_ACCEPTANCE_STAGE : lastStage;
+  const oldTailId = makeAttemptNodeId(phaseId, currentAttempt, tailStage);
   const newFirstId = makeAttemptNodeId(phaseId, nextAttempt, firstStage);
-  const newTailId = makeAttemptNodeId(phaseId, nextAttempt, lastStage);
+  const newTailId = makeAttemptNodeId(phaseId, nextAttempt, tailStage);
   const migratedEdges = state.edges
     .filter((edge) => edge.from === oldTailId)
     .map((edge) => ({ from: newTailId, to: edge.to }));
@@ -413,6 +455,20 @@ function retryNode(state, args) {
     state.edges.push({
       from: makeAttemptNodeId(phaseId, nextAttempt, edge.from),
       to: makeAttemptNodeId(phaseId, nextAttempt, edge.to),
+    });
+  }
+  if (hasHumanAcceptance) {
+    if (state.nodes[newTailId]) {
+      fail(`重试节点已存在: ${newTailId}`);
+    }
+    state.nodes[newTailId] = {
+      ...expandHumanAcceptanceStage(phaseId, nextAttempt),
+      status: "pending",
+      note: "",
+    };
+    state.edges.push({
+      from: makeAttemptNodeId(phaseId, nextAttempt, lastStage),
+      to: newTailId,
     });
   }
   state.edges.push({ from: id, to: newFirstId });
@@ -496,7 +552,7 @@ function printState(state) {
 function usage() {
   console.log([
     "Usage:",
-    "  node state.js init --state <state.json> --nodes <a,b,c> [--edges <a>b,b>c>] [--schema <schema.json>] [--current <node>]",
+    "  node state.js init --state <state.json> --nodes <a,b,c> [--edges <a>b,b>c>] [--schema <schema.json>] [--human-acceptance true] [--current <node>]",
     "  node state.js show --state <state.json>",
     "  node state.js advance --state <state.json> [--note <text>] [--next <node>]",
     "  node state.js retry --state <state.json> [--note <text>]",

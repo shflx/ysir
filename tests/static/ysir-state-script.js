@@ -193,6 +193,89 @@ function main() {
     errors
   );
 
+  const humanAcceptanceStatePath = path.join(schemaTaskDir, "human-acceptance-state.json");
+  const humanAcceptanceInit = run([
+    "init",
+    "--state",
+    humanAcceptanceStatePath,
+    "--nodes",
+    "setup-electron,implement-main-window",
+    "--human-acceptance",
+    "true",
+  ], fixtureDir);
+  assert(humanAcceptanceInit.status === 0, `human acceptance init failed:\n${humanAcceptanceInit.stderr}`, errors);
+  assert(
+    humanAcceptanceInit.stdout.includes("currentStage: develop"),
+    "show output should include current stage",
+    errors
+  );
+
+  const humanAcceptanceState = JSON.parse(fs.readFileSync(humanAcceptanceStatePath, "utf8"));
+  assert(Object.keys(humanAcceptanceState.nodes).length === 10, "human acceptance init should add one node per phase", errors);
+  assert(humanAcceptanceState.humanAcceptance === true, "state should record human acceptance option", errors);
+  assert(
+    humanAcceptanceState.nodes["setup-electron:human-acceptance"].stage === "human-acceptance",
+    "human acceptance node should use stage metadata",
+    errors
+  );
+  assert(
+    humanAcceptanceState.edges.some((edge) => edge.from === "setup-electron:delivery-commit" && edge.to === "setup-electron:human-acceptance"),
+    "human acceptance should follow phase delivery",
+    errors
+  );
+  assert(
+    humanAcceptanceState.edges.some((edge) => edge.from === "setup-electron:human-acceptance" && edge.to === "implement-main-window:develop"),
+    "phase transition should start from human acceptance node",
+    errors
+  );
+
+  for (const note of ["实现完成", "测试通过", "审查通过", "提交完成"]) {
+    const advance = run([
+      "advance",
+      "--state",
+      humanAcceptanceStatePath,
+      "--note",
+      note,
+    ], fixtureDir);
+    assert(advance.status === 0, `human acceptance advance failed:\n${advance.stderr}`, errors);
+  }
+
+  const retryHumanAcceptance = run([
+    "retry",
+    "--state",
+    humanAcceptanceStatePath,
+    "--note",
+    "用户验收不通过，需要返工",
+  ], fixtureDir);
+  assert(retryHumanAcceptance.status === 0, `human acceptance retry failed:\n${retryHumanAcceptance.stderr}`, errors);
+
+  const retriedHumanAcceptanceState = JSON.parse(fs.readFileSync(humanAcceptanceStatePath, "utf8"));
+  assert(
+    retriedHumanAcceptanceState.current === "setup-electron@2:develop",
+    "human acceptance retry should move current to next attempt start",
+    errors
+  );
+  assert(
+    retriedHumanAcceptanceState.nodes["setup-electron:human-acceptance"].status === "failed",
+    "human acceptance retry should mark failed acceptance node",
+    errors
+  );
+  assert(
+    retriedHumanAcceptanceState.nodes["setup-electron@2:human-acceptance"].stage === "human-acceptance",
+    "human acceptance retry should add acceptance node to next attempt",
+    errors
+  );
+  assert(
+    retriedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:delivery-commit" && edge.to === "setup-electron@2:human-acceptance"),
+    "human acceptance retry should keep acceptance after next attempt delivery",
+    errors
+  );
+  assert(
+    retriedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:human-acceptance" && edge.to === "implement-main-window:develop"),
+    "human acceptance retry should migrate phase successor edge to next attempt acceptance",
+    errors
+  );
+
   const advanceSchemaToTest = run([
     "advance",
     "--state",

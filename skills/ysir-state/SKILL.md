@@ -54,12 +54,22 @@ node skills/ysir-state/scripts/state.js init \
   --schema skills/ysir-state/references/schemas/standard/schema.json
 ```
 
+若 `ysir-configure` 显示人工验收开启，在初始化时插入人工验收节点:
+
+```bash
+node skills/ysir-state/scripts/state.js init \
+  --state .report/in-progress/{task}/state.json \
+  --nodes "setup-electron,implement-main-window,wire-storage" \
+  --human-acceptance true
+```
+
 参数说明:
 
 - `--state`: 状态文件路径。
 - `--nodes`: 节点列表，逗号分隔；使用 schema 时表示待展开的计划阶段。
 - `--edges`: 有向边列表，逗号分隔；单条边格式为 `from>to`。使用 schema 时表示计划阶段之间的依赖；不传则按 `--nodes` 顺序连接。
 - `--schema`: 可选的软件方法 schema 路径；默认使用 `skills/ysir-state/references/schemas/standard/schema.json`。若要初始化不展开 schema 的原始自定义图，传 `--schema none`。
+- `--human-acceptance`: 可选；为 `true` 时，在每个计划阶段末尾插入 `human-acceptance` 节点。
 - `--current`: 可选，当前节点；不传时默认使用展开后的第一个节点。
 
 状态图必须是有向无环图；脚本会在初始化时拒绝成环的图。

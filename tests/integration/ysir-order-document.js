@@ -67,6 +67,7 @@ async function main() {
   const errors = [];
 
   assertFileExists(fullOrderPath, orderPath, errors);
+  assertIncludes(orderContent, "## 需要理清的问题", orderPath, errors);
   assertIncludes(orderContent, "## 任务目标", orderPath, errors);
   assertIncludes(orderContent, "## 已确认需求", orderPath, errors);
   assertIncludes(orderContent, "## 验收标准", orderPath, errors);

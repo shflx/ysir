@@ -41,4 +41,6 @@ description: 根据需求文档和仓库上下文形成可落地、可确认的�
 
 - 根据计划中的分迭代实现计划选择软件方法 schema；默认使用 `skills/ysir-state/references/schemas/standard/schema.json`。
 
+- 使用 `ysir-configure` 了解人工验收是否开启；若开启，初始化状态图时传入 `--human-acceptance true`，让 `ysir-state` 在每个计划阶段末尾插入人工验收节点。
+
 - 使用 `ysir-state` 将计划阶段展开为可执行状态图，默认输出路径: `.report/in-progress/{日期}-{需求简短描述}/state.json`

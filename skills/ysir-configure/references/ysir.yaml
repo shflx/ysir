@@ -1,0 +1,9 @@
+humanInTheLoop:
+  requirementClarification:
+    enabled: true
+  requirementConfirmation:
+    enabled: true
+  planConfirmation:
+    enabled: true
+  acceptance:
+    enabled: true

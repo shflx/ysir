@@ -54,6 +54,7 @@ node skills/ysir-state/scripts/state.js show \
 
 ### 3. 执行当前节点
 
+- 若当前节点 `stage` 为 `human-acceptance`，不要启动 subagent；直接暂停并请求用户验收当前计划阶段成果。用户确认通过后使用 `advance` 推进状态图；用户不通过且需要返工时使用 `retry`。
 - 主 agent 在执行任何当前节点工程工作前，必须先为该 `current` 节点启动 subagent；不得用主 agent 直接实现、测试、审查或提交当前节点。
 - 主 agent 向 subagent 提供当前节点 ID、`phase`、`stage` / `label`、`objective`、`template`、前后依赖、相关需求/计划/设计上下文和完成标准，不要指导 subagent 具体该怎么做。
 - subagent 必须完整执行 `currentObjective`；其中包含使用 `ysir-regulation` 了解与本次行动相关规范的前置目标。
