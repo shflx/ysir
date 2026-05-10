@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-understand"
+  short_description: "帮助 Agent 快速理解当前项目"
+  default_prompt: "使用 $ysir-understand 理解当前项目，梳理可供后续开发接手的关键信息。"

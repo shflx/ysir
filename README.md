@@ -63,6 +63,7 @@ $ysir-design 设计加密机制
 | --- | --- |
 | `ysir` | 默认总控技能，负责串联从需求到实现的端到端交付流程。 |
 | `ysir-configure` | 负责管理 `ysir.yaml`，控制需求澄清、需求确认、计划确认和人工验收等 human-in-the-loop 行为。 |
+| `ysir-understand` | 负责帮助 Agent 快速理解当前项目，梳理后续开发接手所需的关键信息。 |
 | `ysir-design` | 负责项目设计或功能/机制设计，沉淀可复用的设计文档。 |
 | `ysir-order` | 负责需求梳理，将模糊指令收敛为结构化需求结果。 |
 | `ysir-plan` | 负责实现规划，选择软件方法 schema，并初始化可执行状态图。 |
