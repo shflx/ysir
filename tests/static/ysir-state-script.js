@@ -9,10 +9,6 @@ const { spawnSync } = require("node:child_process");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const SCRIPT_PATH = path.join(REPO_ROOT, "skills/ysir-state/scripts/state.js");
-const SCHEMA_PATH = path.join(
-  REPO_ROOT,
-  "skills/ysir-state/references/schemas/standard/schema.json"
-);
 
 function run(args, cwd) {
   return spawnSync(process.execPath, [SCRIPT_PATH, ...args], {
@@ -166,7 +162,7 @@ function main() {
     "--edges",
     "setup-electron>implement-main-window,implement-main-window>setup-electron",
     "--schema",
-    SCHEMA_PATH,
+    "standard",
     "--current",
     "setup-electron:develop",
   ], fixtureDir);
@@ -175,6 +171,7 @@ function main() {
   const schemaState = JSON.parse(fs.readFileSync(schemaStatePath, "utf8"));
   assert(Object.keys(schemaState.nodes).length === 12, "schema init should expand 3 phases into 12 nodes", errors);
   assert(schemaState.schema.name === "standard", "schema name should be standard", errors);
+  assert(!("path" in schemaState.schema), "schema state should not expose schema path", errors);
   assert(schemaState.nodes["setup-electron:develop"].status === "current", "first expanded node should be current", errors);
   assert(schemaState.nodes["wire-storage:delivery-commit"].phase === "wire-storage", "expanded node should keep phase metadata", errors);
   assert(
@@ -192,6 +189,109 @@ function main() {
     "schema init should connect adjacent expanded phases",
     errors
   );
+
+  const tddStatePath = path.join(schemaTaskDir, "tdd-state.json");
+  const tddInit = run([
+    "init",
+    "--state",
+    tddStatePath,
+    "--nodes",
+    "implement-parser,render-summary",
+    "--schema",
+    "tdd",
+  ], fixtureDir);
+  assert(tddInit.status === 0, `tdd schema init failed:\n${tddInit.stderr}`, errors);
+
+  const tddState = JSON.parse(fs.readFileSync(tddStatePath, "utf8"));
+  assert(tddState.schema.name === "tdd", "tdd schema name should be tdd", errors);
+  assert(Object.keys(tddState.nodes).length === 10, "tdd schema init should expand 2 phases into 10 nodes", errors);
+  assert(tddState.current === "implement-parser:red-test", "tdd schema should start from red test", errors);
+  assert(
+    tddState.nodes["implement-parser:red-test"].objective.includes("最小可验证行为"),
+    "tdd red stage should require one minimal behavior",
+    errors
+  );
+  assert(
+    tddState.edges.some((edge) => edge.from === "implement-parser:red-test" && edge.to === "implement-parser:green-implementation"),
+    "tdd schema should connect red to green",
+    errors
+  );
+  assert(
+    tddState.edges.some((edge) => edge.from === "implement-parser:green-implementation" && edge.to === "implement-parser:refactor"),
+    "tdd schema should connect green to refactor",
+    errors
+  );
+  assert(
+    tddState.edges.some((edge) => edge.from === "implement-parser:delivery-commit" && edge.to === "render-summary:red-test"),
+    "tdd schema should connect phase tail to next phase red test",
+    errors
+  );
+
+  for (const note of ["失败测试已确认", "最小实现已通过", "重构后测试通过"]) {
+    const advance = run([
+      "advance",
+      "--state",
+      tddStatePath,
+      "--note",
+      note,
+    ], fixtureDir);
+    assert(advance.status === 0, `tdd advance failed:\n${advance.stderr}`, errors);
+  }
+
+  const nextAttemptTdd = run([
+    "next-attempt",
+    "--state",
+    tddStatePath,
+    "--status",
+    "completed",
+    "--note",
+    "继续下一个最小行为",
+  ], fixtureDir);
+  assert(nextAttemptTdd.status === 0, `tdd next-attempt failed:\n${nextAttemptTdd.stderr}`, errors);
+
+  const nextAttemptedTddState = JSON.parse(fs.readFileSync(tddStatePath, "utf8"));
+  assert(nextAttemptedTddState.current === "implement-parser@2:red-test", "tdd next-attempt should move current to next attempt red test", errors);
+  assert(nextAttemptedTddState.nodes["implement-parser:quality-review"].status === "completed", "tdd next-attempt should mark current node with provided status", errors);
+  assert(
+    nextAttemptedTddState.edges.some((edge) => edge.from === "implement-parser:quality-review" && edge.to === "implement-parser@2:red-test"),
+    "tdd next-attempt should connect current node to next attempt red test",
+    errors
+  );
+  assert(
+    nextAttemptedTddState.edges.some((edge) => edge.from === "implement-parser@2:delivery-commit" && edge.to === "render-summary:red-test"),
+    "tdd next-attempt should migrate phase successor edge to next attempt tail",
+    errors
+  );
+  assert(
+    !nextAttemptedTddState.edges.some((edge) => edge.from === "implement-parser:quality-review" && edge.to === "implement-parser:delivery-commit"),
+    "tdd next-attempt should remove old current outgoing edge",
+    errors
+  );
+
+  const legacySchemaStatePath = path.join(schemaTaskDir, "legacy-schema-path-state.json");
+  const legacySchemaState = JSON.parse(JSON.stringify(schemaState));
+  legacySchemaState.schema.path = "skills/ysir-state/references/schemas/standard/schema.json";
+  writeFile(legacySchemaStatePath, `${JSON.stringify(legacySchemaState, null, 2)}\n`);
+  for (const note of ["实现完成", "测试通过"]) {
+    const advance = run([
+      "advance",
+      "--state",
+      legacySchemaStatePath,
+      "--note",
+      note,
+    ], fixtureDir);
+    assert(advance.status === 0, `legacy schema advance failed:\n${advance.stderr}`, errors);
+  }
+  const nextAttemptLegacySchema = run([
+    "next-attempt",
+    "--state",
+    legacySchemaStatePath,
+    "--status",
+    "failed",
+    "--note",
+    "旧 state.json 仍可按 schema.name 追加 attempt",
+  ], fixtureDir);
+  assert(nextAttemptLegacySchema.status === 0, `legacy schema next-attempt failed:\n${nextAttemptLegacySchema.stderr}`, errors);
 
   const humanAcceptanceStatePath = path.join(schemaTaskDir, "human-acceptance-state.json");
   const humanAcceptanceInit = run([
@@ -240,39 +340,41 @@ function main() {
     assert(advance.status === 0, `human acceptance advance failed:\n${advance.stderr}`, errors);
   }
 
-  const retryHumanAcceptance = run([
-    "retry",
+  const nextAttemptHumanAcceptance = run([
+    "next-attempt",
     "--state",
     humanAcceptanceStatePath,
+    "--status",
+    "failed",
     "--note",
     "用户验收不通过，需要返工",
   ], fixtureDir);
-  assert(retryHumanAcceptance.status === 0, `human acceptance retry failed:\n${retryHumanAcceptance.stderr}`, errors);
+  assert(nextAttemptHumanAcceptance.status === 0, `human acceptance next-attempt failed:\n${nextAttemptHumanAcceptance.stderr}`, errors);
 
-  const retriedHumanAcceptanceState = JSON.parse(fs.readFileSync(humanAcceptanceStatePath, "utf8"));
+  const nextAttemptedHumanAcceptanceState = JSON.parse(fs.readFileSync(humanAcceptanceStatePath, "utf8"));
   assert(
-    retriedHumanAcceptanceState.current === "setup-electron@2:develop",
-    "human acceptance retry should move current to next attempt start",
+    nextAttemptedHumanAcceptanceState.current === "setup-electron@2:develop",
+    "human acceptance next-attempt should move current to next attempt start",
     errors
   );
   assert(
-    retriedHumanAcceptanceState.nodes["setup-electron:human-acceptance"].status === "failed",
-    "human acceptance retry should mark failed acceptance node",
+    nextAttemptedHumanAcceptanceState.nodes["setup-electron:human-acceptance"].status === "failed",
+    "human acceptance next-attempt should mark failed acceptance node",
     errors
   );
   assert(
-    retriedHumanAcceptanceState.nodes["setup-electron@2:human-acceptance"].stage === "human-acceptance",
-    "human acceptance retry should add acceptance node to next attempt",
+    nextAttemptedHumanAcceptanceState.nodes["setup-electron@2:human-acceptance"].stage === "human-acceptance",
+    "human acceptance next-attempt should add acceptance node to next attempt",
     errors
   );
   assert(
-    retriedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:delivery-commit" && edge.to === "setup-electron@2:human-acceptance"),
-    "human acceptance retry should keep acceptance after next attempt delivery",
+    nextAttemptedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:delivery-commit" && edge.to === "setup-electron@2:human-acceptance"),
+    "human acceptance next-attempt should keep acceptance after next attempt delivery",
     errors
   );
   assert(
-    retriedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:human-acceptance" && edge.to === "implement-main-window:develop"),
-    "human acceptance retry should migrate phase successor edge to next attempt acceptance",
+    nextAttemptedHumanAcceptanceState.edges.some((edge) => edge.from === "setup-electron@2:human-acceptance" && edge.to === "implement-main-window:develop"),
+    "human acceptance next-attempt should migrate phase successor edge to next attempt acceptance",
     errors
   );
 
@@ -294,45 +396,49 @@ function main() {
   ], fixtureDir);
   assert(advanceSchemaToReview.status === 0, `schema advance to review failed:\n${advanceSchemaToReview.stderr}`, errors);
 
-  const retrySchema = run([
-    "retry",
+  const nextAttemptSchema = run([
+    "next-attempt",
     "--state",
     schemaStatePath,
+    "--status",
+    "failed",
     "--note",
     "代码审查发现结构问题，需要修改实现",
   ], fixtureDir);
-  assert(retrySchema.status === 0, `schema retry failed:\n${retrySchema.stderr}`, errors);
+  assert(nextAttemptSchema.status === 0, `schema next-attempt failed:\n${nextAttemptSchema.stderr}`, errors);
 
-  const retriedState = JSON.parse(fs.readFileSync(schemaStatePath, "utf8"));
-  assert(retriedState.current === "setup-electron@2:develop", "retry should move current to next attempt start", errors);
-  assert(retriedState.nodes["setup-electron:acceptance-review"].status === "failed", "retry should mark failed node", errors);
-  assert(retriedState.nodes["setup-electron@2:develop"].status === "current", "retry start should be current", errors);
-  assert(retriedState.nodes["setup-electron@2:develop"].attempt === 2, "retry nodes should include attempt metadata", errors);
-  assert(retriedState.nodes["setup-electron@2:acceptance-review"].retryOf === "setup-electron:acceptance-review", "retry nodes should reference original node", errors);
+  const nextAttemptedState = JSON.parse(fs.readFileSync(schemaStatePath, "utf8"));
+  assert(nextAttemptedState.current === "setup-electron@2:develop", "next-attempt should move current to next attempt start", errors);
+  assert(nextAttemptedState.nodes["setup-electron:acceptance-review"].status === "failed", "next-attempt should mark current node with provided status", errors);
+  assert(nextAttemptedState.nodes["setup-electron@2:develop"].status === "current", "next-attempt start should be current", errors);
+  assert(nextAttemptedState.nodes["setup-electron@2:develop"].attempt === 2, "next-attempt nodes should include attempt metadata", errors);
+  assert(nextAttemptedState.nodes["setup-electron@2:acceptance-review"].attemptOf === "setup-electron:acceptance-review", "next-attempt nodes should reference original node", errors);
   assert(
-    retriedState.edges.some((edge) => edge.from === "setup-electron:acceptance-review" && edge.to === "setup-electron@2:develop"),
-    "retry should connect failed node to next attempt start",
+    nextAttemptedState.edges.some((edge) => edge.from === "setup-electron:acceptance-review" && edge.to === "setup-electron@2:develop"),
+    "next-attempt should connect current node to next attempt start",
     errors
   );
   assert(
-    retriedState.edges.some((edge) => edge.from === "setup-electron@2:delivery-commit" && edge.to === "implement-main-window:develop"),
-    "retry should migrate phase successor edge to next attempt tail",
+    nextAttemptedState.edges.some((edge) => edge.from === "setup-electron@2:delivery-commit" && edge.to === "implement-main-window:develop"),
+    "next-attempt should migrate phase successor edge to next attempt tail",
     errors
   );
   assert(
-    !retriedState.edges.some((edge) => edge.from === "setup-electron:acceptance-review" && edge.to === "setup-electron:delivery-commit"),
-    "retry should remove old failed node outgoing edge",
+    !nextAttemptedState.edges.some((edge) => edge.from === "setup-electron:acceptance-review" && edge.to === "setup-electron:delivery-commit"),
+    "next-attempt should remove old current outgoing edge",
     errors
   );
 
-  const rawRetry = run([
-    "retry",
+  const rawNextAttempt = run([
+    "next-attempt",
     "--state",
     statePath,
+    "--status",
+    "failed",
     "--note",
-    "原始图不支持 retry",
+    "原始图不支持 next-attempt",
   ], fixtureDir);
-  assert(rawRetry.status !== 0, "retry should reject raw graphs without schema", errors);
+  assert(rawNextAttempt.status !== 0, "next-attempt should reject raw graphs without schema", errors);
 
   fs.rmSync(fixtureDir, { recursive: true, force: true });
 

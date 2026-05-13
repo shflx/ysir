@@ -14,7 +14,7 @@ description: 落地实现当前需求，并使用 ysir-state 状态图进行进�
 1. 以完成当前需求落地为目标；`ysir-state` 只用于进度门禁和阶段推进，不替代工程判断。
 2. `current` 是唯一执行边界；不跳步、不合并节点、不增量补图、不手写 `state.json`。
 3. 每个 `current` 节点必须至少启动一个 subagent 执行；主 agent 不直接完成节点工程工作，只负责读取状态图、分派节点、验收结果和推进状态。
-4. 完成用 `advance`，返工用 `retry`；每次更新后必须重新 `show`，以状态图输出判断下一步。
+4. 完成用 `advance`，返工或续轮用 `next-attempt`；每次更新后必须重新 `show`，以状态图输出判断下一步。
 5. 若需求、设计、计划、规范或当前实现之间存在冲突，暂停推进并向用户确认。
 
 ## 工作流程
@@ -54,7 +54,7 @@ node skills/ysir-state/scripts/state.js show \
 
 ### 3. 执行当前节点
 
-- 若当前节点 `stage` 为 `human-acceptance`，不要启动 subagent；直接暂停并请求用户验收当前计划阶段成果。用户确认通过后使用 `advance` 推进状态图；用户不通过且需要返工时使用 `retry`。
+- 若当前节点 `stage` 为 `human-acceptance`，不要启动 subagent；直接暂停并请求用户验收当前计划阶段成果。用户确认通过后使用 `advance` 推进状态图；用户不通过且需要返工时使用 `next-attempt --status failed`。
 - 主 agent 在执行任何当前节点工程工作前，必须先为该 `current` 节点启动 subagent；不得用主 agent 直接实现、测试、审查或提交当前节点。
 - 主 agent 向 subagent 提供当前节点 ID、`phase`、`stage` / `label`、`objective`、`template`、前后依赖、相关需求/计划/设计上下文和完成标准，不要指导 subagent 具体该怎么做。
 - subagent 必须完整执行 `currentObjective`；其中包含使用 `ysir-regulation` 了解与本次行动相关规范的前置目标。
@@ -63,7 +63,7 @@ node skills/ysir-state/scripts/state.js show \
 - 若节点需要测试、审查、提交或其它验证，subagent 必须实际执行对应动作并返回证据。
 - subagent 返回结果必须说明完成情况、关键改动、验证命令或证据、遗留问题；涉及代码改动时必须列出改动文件。
 - 主 agent 验收 subagent 结果；只有 subagent 完成当前节点要求的实现、验证或产物后，才进入状态图更新。
-- 若 subagent 未完成当前节点，主 agent 不得自行补做节点工作；应继续分派 subagent、按 `retry` 表达返工，或在冲突阻塞时暂停确认。
+- 若 subagent 未完成当前节点，主 agent 不得自行补做节点工作；应继续分派 subagent、按 `next-attempt --status failed` 表达返工，或在冲突阻塞时暂停确认。
 - 若发现需求、计划或设计冲突，暂停并向用户确认。
 
 ### 4. 更新状态图
@@ -97,17 +97,27 @@ node skills/ysir-state/scripts/state.js advance \
 
 `note` 只写简短依据，例如测试命令、报告路径、提交哈希或用户确认。
 
-当前节点失败且需要返工:
+当前节点需要进入下一轮 attempt:
 
-若当前节点失败，且后续工作需要改动代码或重新从当前阶段的实现环节开始，使用 `retry` 追加新 attempt:
+若当前节点失败，且后续工作需要改动代码或重新从当前阶段的实现环节开始，使用 `next-attempt --status failed` 追加新 attempt:
 
 ```bash
-node skills/ysir-state/scripts/state.js retry \
+node skills/ysir-state/scripts/state.js next-attempt \
   --state .report/in-progress/{task}/state.json \
+  --status failed \
   --note "{失败原因和返工依据}"
 ```
 
-每次 `retry` 后必须重新执行 `show`，读取新 attempt 的 `current` 节点并继续回到步骤 2。不要通过手动改状态、补节点或补边来表达返工。
+若当前节点已完成，但当前 schema 目标要求继续下一轮，例如继续下一个最小行为，使用 `next-attempt --status completed`:
+
+```bash
+node skills/ysir-state/scripts/state.js next-attempt \
+  --state .report/in-progress/{task}/state.json \
+  --status completed \
+  --note "{继续下一轮的依据}"
+```
+
+每次 `next-attempt` 后必须重新执行 `show`，读取新 attempt 的 `current` 节点并继续回到步骤 2。不要通过手动改状态、补节点或补边来表达返工或续轮。
 
 ### 5. 归档本地文档
 

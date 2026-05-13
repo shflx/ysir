@@ -107,7 +107,6 @@ function setupProject(projectDir) {
         current: "add:develop",
         schema: {
           name: "standard",
-          path: "skills/ysir-state/references/schemas/standard/schema.json",
         },
         nodes: {
           "add:develop": {

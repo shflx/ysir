@@ -1,4 +1,4 @@
 interface:
   display_name: "ysir-configure"
-  short_description: "配置 human-in-the-loop 行为"
-  default_prompt: "使用 $ysir-configure 创建、读取或更新 ysir.yaml 中的人机协作配置。"
+  short_description: "配置 YSIR 项目策略"
+  default_prompt: "使用 $ysir-configure 创建、读取或更新 ysir.yaml 中的人机协作和软件开发方法配置。"

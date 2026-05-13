@@ -43,7 +43,7 @@ node ysir.js
 
 安装完成后，打开目标工具，即可通过技能名直接触发对应能力。
 
-首次需要 human-in-the-loop 配置时，YSIR 会通过 `ysir-configure` 初始化 `ysir.yaml`。
+首次需要项目策略配置时，YSIR 会通过 `ysir-configure` 初始化 `ysir.yaml`，包括 human-in-the-loop 行为和软件开发方法。
 
 ```text
 # 从0到1完成软件落地
@@ -62,7 +62,7 @@ $ysir-design 设计加密机制
 | 技能 | 作用 |
 | --- | --- |
 | `ysir` | 默认总控技能，负责串联从需求到实现的端到端交付流程。 |
-| `ysir-configure` | 负责管理 `ysir.yaml`，控制需求澄清、需求确认、计划确认和人工验收等 human-in-the-loop 行为。 |
+| `ysir-configure` | 负责管理 `ysir.yaml`，控制 human-in-the-loop 行为和软件开发方法。 |
 | `ysir-understand` | 负责帮助 Agent 快速理解当前项目，梳理后续开发接手所需的关键信息。 |
 | `ysir-design` | 负责项目设计或功能/机制设计，沉淀可复用的设计文档。 |
 | `ysir-order` | 负责需求梳理，将模糊指令收敛为结构化需求结果。 |
@@ -74,7 +74,7 @@ $ysir-design 设计加密机制
 
 ### 产物
 
-项目配置通过根目录 `ysir.yaml` 管理，用来控制人的参与程度。文档产物默认围绕 `.report/` 组织：
+项目配置通过根目录 `ysir.yaml` 管理，用来控制人的参与程度和软件开发方法。文档产物默认围绕 `.report/` 组织：
 
 ```text
 .report/

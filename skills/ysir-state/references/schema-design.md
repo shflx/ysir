@@ -50,10 +50,14 @@ references/schemas/
 - `init --edges` 表示计划阶段之间的依赖；脚本会连接 `from` 阶段最后一个子阶段到 `to` 阶段第一个子阶段。
 - 若未提供 `init --edges`，脚本按 `--nodes` 顺序连接相邻计划阶段。
 
+## 已有 schema
+
+- `standard`: 标准开发流程，按 `develop -> acceptance-test -> acceptance-review -> delivery-commit` 展开。
+- `tdd`: TDD 流程，按 `red-test -> green-implementation -> refactor -> quality-review -> delivery-commit` 展开；`quality-review` 判断是否继续下一个最小行为或返工，需要继续时使用 `next-attempt` 追加新 attempt，保持状态图有向无环。
+
 ## 扩展边界
 
 - schema 只描述通用方法阶段，不写具体需求内容。
 - schema 应优先描述阶段目标；模板只是可选产物格式提示。
-- TDD 可通过新增 `references/schemas/tdd/schema.json` 实现，例如定义 `red -> green -> refactor`。
 - 复杂条件分支由调用技能在初始化时直接传 `--nodes` / `--edges` 定义；初始化后不通过增量补图改变执行边界。
 - schema 不判断阶段是否完成；完成判断由调用技能基于状态、规范和上下文完成。

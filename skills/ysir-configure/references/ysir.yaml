@@ -1,3 +1,4 @@
+developmentMethod: standard
 humanInTheLoop:
   requirementClarification:
     enabled: true

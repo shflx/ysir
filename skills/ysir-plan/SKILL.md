@@ -39,8 +39,8 @@ description: 根据需求文档和仓库上下文形成可落地、可确认的�
 
 ### 3. 初始化状态图
 
-- 根据计划中的分迭代实现计划选择软件方法 schema；默认使用 `skills/ysir-state/references/schemas/standard/schema.json`。
+- 使用 `ysir-configure` 读取 `developmentMethod` 和人工验收配置；`developmentMethod` 未配置时按 `standard` 处理，若不是 `standard` 或 `tdd` 则暂停向用户确认。
 
-- 使用 `ysir-configure` 了解人工验收是否开启；若开启，初始化状态图时传入 `--human-acceptance true`，让 `ysir-state` 在每个计划阶段末尾插入人工验收节点。
+- 状态图节点来自 `分迭代的实现计划` 的业务阶段；软件方法只作为 `ysir-state` 的 `--schema {developmentMethod}` 展开执行子阶段，不产生其它副作用。
 
-- 使用 `ysir-state` 将计划阶段展开为可执行状态图，默认输出路径: `.report/in-progress/{日期}-{需求简短描述}/state.json`
+- 使用 `ysir-state` 初始化 `.report/in-progress/{日期}-{需求简短描述}/state.json`；生成或执行初始化命令时必须补齐完整参数，人工验收开启时追加 `--human-acceptance true`。

@@ -6,8 +6,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const OBJECTIVE_PREFIX = "先使用 ysir-regulation 了解与本次行动相关的规范；然后";
-const DEFAULT_SCHEMA_PATH = path.join(__dirname, "../references/schemas/standard/schema.json");
-const DEFAULT_SCHEMA_DISPLAY_PATH = "skills/ysir-state/references/schemas/standard/schema.json";
+const DEFAULT_SCHEMA_NAME = "standard";
+const SCHEMA_ROOT = path.join(__dirname, "../references/schemas");
+const SCHEMA_DISPLAY_ROOT = "skills/ysir-state/references/schemas";
 const HUMAN_ACCEPTANCE_STAGE = "human-acceptance";
 
 function fail(message) {
@@ -154,37 +155,86 @@ function expandHumanAcceptanceStage(phaseId, attempt = 1) {
     ...(attempt > 1
       ? {
         attempt,
-        retryOf: makeAttemptNodeId(phaseId, 1, HUMAN_ACCEPTANCE_STAGE),
+        attemptOf: makeAttemptNodeId(phaseId, 1, HUMAN_ACCEPTANCE_STAGE),
       }
       : {}),
   };
 }
 
-function resolveSchemaPath(schemaPath) {
-  if (!schemaPath) {
-    fail("当前状态图缺少 schema，无法重试");
+function assertSchemaName(schemaName) {
+  const name = String(schemaName || "").trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(name)) {
+    fail(`schema 名称无效: ${schemaName}`);
   }
-  if (path.isAbsolute(schemaPath)) {
-    return schemaPath;
-  }
-  const cwdPath = path.resolve(process.cwd(), schemaPath);
-  if (fs.existsSync(cwdPath)) {
-    return cwdPath;
-  }
-  if (schemaPath === DEFAULT_SCHEMA_DISPLAY_PATH) {
-    return DEFAULT_SCHEMA_PATH;
-  }
-  if (!fs.existsSync(cwdPath)) {
-    fail(`schema 文件不存在: ${schemaPath}`);
-  }
-  return cwdPath;
+  return name;
 }
 
-function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaPath, options = {}) {
-  const schema = readJson(schemaPath);
-  const schemaDir = path.dirname(schemaDisplayPath);
+function schemaDisplayDir(schemaName) {
+  return `${SCHEMA_DISPLAY_ROOT}/${schemaName}`;
+}
+
+function resolveSchema(schemaName) {
+  const name = assertSchemaName(schemaName);
+  const schemaPath = path.join(SCHEMA_ROOT, name, "schema.json");
+  const displayDir = schemaDisplayDir(name);
+  if (!fs.existsSync(schemaPath)) {
+    fail(`schema 不存在: ${name}，应位于 ${displayDir}/schema.json`);
+  }
+  return {
+    name,
+    path: schemaPath,
+    displayDir,
+    displayPath: `${displayDir}/schema.json`,
+  };
+}
+
+function parseSchemaOption(value) {
+  if (value === "none") {
+    return "";
+  }
+  if (value === true) {
+    fail("缺少 --schema <schema-name|none>");
+  }
+  return assertSchemaName(value || DEFAULT_SCHEMA_NAME);
+}
+
+function inferSchemaNameFromLegacyPath(schemaPath) {
+  if (!schemaPath) {
+    return "";
+  }
+  const parts = String(schemaPath).split(/[\\/]/).filter(Boolean);
+  if (parts[parts.length - 1] === "schema.json" && parts.length >= 2) {
+    return parts[parts.length - 2];
+  }
+  return "";
+}
+
+function resolveSchemaFromState(state) {
+  if (!state.schema) {
+    fail("当前状态图缺少 schema，无法追加下一轮 attempt");
+  }
+  const schemaName = typeof state.schema === "string"
+    ? state.schema
+    : state.schema.name || inferSchemaNameFromLegacyPath(state.schema.path);
+  if (!schemaName) {
+    fail("当前状态图缺少 schema.name，无法追加下一轮 attempt");
+  }
+  return resolveSchema(schemaName);
+}
+
+function readSchema(schemaInfo) {
+  const schema = readJson(schemaInfo.path);
+  if (schema.name && schema.name !== schemaInfo.name) {
+    fail(`schema 名称不一致: 参数为 ${schemaInfo.name}，文件中为 ${schema.name}`);
+  }
+  return schema;
+}
+
+function expandSchema(nodes, phaseEdges, schemaInfo, options = {}) {
+  const schema = readSchema(schemaInfo);
+  const schemaDir = schemaInfo.displayDir;
   if (!Array.isArray(schema.subStages) || schema.subStages.length === 0) {
-    fail(`schema 缺少 subStages: ${schemaPath}`);
+    fail(`schema 缺少 subStages: ${schemaInfo.displayPath}`);
   }
 
   const schemaEdges = Array.isArray(schema.edges) ? schema.edges : [];
@@ -195,7 +245,7 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
   for (const phaseId of nodes) {
     for (const subStage of schema.subStages) {
       if (!subStage.id) {
-        fail(`schema subStages 存在缺少 id 的条目: ${schemaPath}`);
+        fail(`schema subStages 存在缺少 id 的条目: ${schemaInfo.displayPath}`);
       }
       expandedNodes.push(expandSubStage(phaseId, subStage, schemaDir));
     }
@@ -205,7 +255,7 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
 
     for (const edge of schemaEdges) {
       if (!edge.from || !edge.to) {
-        fail(`schema edges 存在缺少 from/to 的条目: ${schemaPath}`);
+        fail(`schema edges 存在缺少 from/to 的条目: ${schemaInfo.displayPath}`);
       }
       expandedEdges.push({
         from: `${phaseId}:${edge.from}`,
@@ -241,8 +291,7 @@ function expandSchema(nodes, phaseEdges, schemaPath, schemaDisplayPath = schemaP
 
   return {
     schema: {
-      name: schema.name || path.basename(schemaPath),
-      path: schemaDisplayPath.split(path.sep).join("/"),
+      name: schemaInfo.name,
     },
     nodes: expandedNodes,
     edges: expandedEdges,
@@ -253,11 +302,11 @@ function createState(args) {
   const inputNodes = parseList(args.nodes);
   assertUnique(inputNodes, "nodes");
   const inputEdges = parseList(args.edges).map(parseEdge);
-  const schemaPath = args.schema === "none" ? "" : (args.schema || DEFAULT_SCHEMA_PATH);
-  const schemaDisplayPath = args.schema ? args.schema : DEFAULT_SCHEMA_DISPLAY_PATH;
+  const schemaName = parseSchemaOption(args.schema);
+  const schemaInfo = schemaName ? resolveSchema(schemaName) : null;
   const humanAcceptance = parseBoolean(args["human-acceptance"]);
-  const expanded = schemaPath
-    ? expandSchema(inputNodes, inputEdges, schemaPath, schemaDisplayPath, { humanAcceptance })
+  const expanded = schemaInfo
+    ? expandSchema(inputNodes, inputEdges, schemaInfo, { humanAcceptance })
     : {
       schema: null,
       nodes: inputNodes.map((id) => ({ id })),
@@ -383,34 +432,46 @@ function maxAttemptForPhase(state, phaseId) {
     .reduce((max, node) => Math.max(max, node.attempt || 1), 0);
 }
 
-function retryNode(state, args) {
+function parseNextAttemptStatus(value) {
+  if (!value || value === true) {
+    fail("缺少 --status completed|failed");
+  }
+  const status = String(value);
+  if (!["completed", "failed"].includes(status)) {
+    fail(`next-attempt 只支持 --status completed|failed: ${status}`);
+  }
+  return status;
+}
+
+function nextAttemptNode(state, args) {
   const id = state.current;
   if (!id) {
-    fail("缺少 current 节点，无法重试");
+    fail("缺少 current 节点，无法追加下一轮 attempt");
   }
   assertNodeExists(state, id);
 
+  const status = parseNextAttemptStatus(args.status);
   const currentNode = state.nodes[id];
   if (!state.schema || !currentNode.phase || !currentNode.stage) {
-    fail("retry 只支持使用 schema 展开的状态图");
+    fail("next-attempt 只支持使用 schema 展开的状态图");
   }
   if (currentNode.status !== "current") {
-    fail(`只能重试 current 状态节点: ${id}`);
+    fail(`只能为 current 状态节点追加下一轮 attempt: ${id}`);
   }
 
-  const schemaPath = resolveSchemaPath(state.schema.path);
-  const schema = readJson(schemaPath);
+  const schemaInfo = resolveSchemaFromState(state);
+  const schema = readSchema(schemaInfo);
   const subStages = Array.isArray(schema.subStages) ? schema.subStages : [];
   const schemaEdges = Array.isArray(schema.edges) ? schema.edges : [];
   if (subStages.length === 0) {
-    fail(`schema 缺少 subStages: ${schemaPath}`);
+    fail(`schema 缺少 subStages: ${schemaInfo.displayPath}`);
   }
   assertUnique(subStages.map((subStage) => subStage.id), "schema.subStages");
 
   const phaseId = currentNode.phase;
   const currentAttempt = currentNode.attempt || 1;
   const nextAttempt = maxAttemptForPhase(state, phaseId) + 1;
-  const schemaDir = path.dirname(state.schema.path);
+  const schemaDir = schemaInfo.displayDir;
   const firstStage = subStages[0].id;
   const lastStage = subStages[subStages.length - 1].id;
   const hasHumanAcceptance = state.humanAcceptance === true;
@@ -422,26 +483,26 @@ function retryNode(state, args) {
     .filter((edge) => edge.from === oldTailId)
     .map((edge) => ({ from: newTailId, to: edge.to }));
 
-  currentNode.status = "failed";
+  currentNode.status = status;
   if (args.note !== undefined) {
     currentNode.note = args.note;
   }
 
   for (const subStage of subStages) {
     if (!subStage.id) {
-      fail(`schema subStages 存在缺少 id 的条目: ${schemaPath}`);
+      fail(`schema subStages 存在缺少 id 的条目: ${schemaInfo.displayPath}`);
     }
     const newNode = expandSubStage(`${phaseId}@${nextAttempt}`, subStage, schemaDir);
     const nodeId = makeAttemptNodeId(phaseId, nextAttempt, subStage.id);
     if (state.nodes[nodeId]) {
-      fail(`重试节点已存在: ${nodeId}`);
+      fail(`下一轮 attempt 节点已存在: ${nodeId}`);
     }
     state.nodes[nodeId] = {
       ...newNode,
       id: nodeId,
       phase: phaseId,
       attempt: nextAttempt,
-      retryOf: makeAttemptNodeId(phaseId, 1, subStage.id),
+      attemptOf: makeAttemptNodeId(phaseId, 1, subStage.id),
       status: "pending",
       note: "",
     };
@@ -450,7 +511,7 @@ function retryNode(state, args) {
   state.edges = state.edges.filter((edge) => edge.from !== id && edge.from !== oldTailId);
   for (const edge of schemaEdges) {
     if (!edge.from || !edge.to) {
-      fail(`schema edges 存在缺少 from/to 的条目: ${schemaPath}`);
+      fail(`schema edges 存在缺少 from/to 的条目: ${schemaInfo.displayPath}`);
     }
     state.edges.push({
       from: makeAttemptNodeId(phaseId, nextAttempt, edge.from),
@@ -459,7 +520,7 @@ function retryNode(state, args) {
   }
   if (hasHumanAcceptance) {
     if (state.nodes[newTailId]) {
-      fail(`重试节点已存在: ${newTailId}`);
+      fail(`下一轮 attempt 节点已存在: ${newTailId}`);
     }
     state.nodes[newTailId] = {
       ...expandHumanAcceptanceStage(phaseId, nextAttempt),
@@ -478,9 +539,9 @@ function retryNode(state, args) {
   setCurrent(state, newFirstId);
   state.history.push({
     node: id,
-    status: "failed",
+    status,
     note: currentNode.note,
-    retryStart: newFirstId,
+    nextAttemptStart: newFirstId,
     at: nowIso(),
   });
   state.updatedAt = nowIso();
@@ -536,11 +597,12 @@ function printState(state) {
   for (const node of Object.values(state.nodes)) {
     const label = node.label ? ` ${node.label}` : "";
     const attempt = node.attempt ? ` attempt=${node.attempt}` : "";
-    const retryOf = node.retryOf ? ` retryOf=${node.retryOf}` : "";
+    const attemptOfValue = node.attemptOf || node.retryOf;
+    const attemptOf = attemptOfValue ? ` attemptOf=${attemptOfValue}` : "";
     const objective = node.objective ? ` objective=${node.objective}` : "";
     const template = node.template ? ` template=${node.template}` : "";
     const note = node.note ? ` note=${node.note}` : "";
-    console.log(`- ${node.id} [${node.status}]${label}${attempt}${retryOf}${objective}${template}${note}`);
+    console.log(`- ${node.id} [${node.status}]${label}${attempt}${attemptOf}${objective}${template}${note}`);
   }
   console.log("");
   console.log("edges:");
@@ -552,10 +614,10 @@ function printState(state) {
 function usage() {
   console.log([
     "Usage:",
-    "  node state.js init --state <state.json> --nodes <a,b,c> [--edges <a>b,b>c>] [--schema <schema.json>] [--human-acceptance true] [--current <node>]",
+    "  node state.js init --state <state.json> --nodes <a,b,c> [--edges <a>b,b>c>] [--schema <schema-name|none>] [--human-acceptance true] [--current <node>]",
     "  node state.js show --state <state.json>",
     "  node state.js advance --state <state.json> [--note <text>] [--next <node>]",
-    "  node state.js retry --state <state.json> [--note <text>]",
+    "  node state.js next-attempt --state <state.json> --status completed|failed [--note <text>]",
     "  node state.js set --state <state.json> --node <node> [--status <status>] [--note <text>] [--current <node>]",
   ].join("\n"));
 }
@@ -591,8 +653,8 @@ function main() {
   let nextState;
   if (command === "advance") {
     nextState = advanceNode(state, args);
-  } else if (command === "retry") {
-    nextState = retryNode(state, args);
+  } else if (command === "next-attempt") {
+    nextState = nextAttemptNode(state, args);
   } else if (command === "set") {
     nextState = setNode(state, args);
   } else {

@@ -45,13 +45,22 @@ node skills/ysir-state/scripts/state.js init \
   --edges "setup-electron>implement-main-window,implement-main-window>wire-storage"
 ```
 
-使用软件方法 schema 展开子阶段:
+使用软件方法 schema 展开子阶段，`--schema` 传入 schema 名称:
 
 ```bash
 node skills/ysir-state/scripts/state.js init \
   --state .report/in-progress/{task}/state.json \
   --nodes "setup-electron,implement-main-window,wire-storage" \
-  --schema skills/ysir-state/references/schemas/standard/schema.json
+  --schema standard
+```
+
+也可以传入其它已存在的 schema 名称:
+
+```bash
+node skills/ysir-state/scripts/state.js init \
+  --state .report/in-progress/{task}/state.json \
+  --nodes "setup-electron,implement-main-window,wire-storage" \
+  --schema tdd
 ```
 
 若 `ysir-configure` 显示人工验收开启，在初始化时插入人工验收节点:
@@ -68,7 +77,7 @@ node skills/ysir-state/scripts/state.js init \
 - `--state`: 状态文件路径。
 - `--nodes`: 节点列表，逗号分隔；使用 schema 时表示待展开的计划阶段。
 - `--edges`: 有向边列表，逗号分隔；单条边格式为 `from>to`。使用 schema 时表示计划阶段之间的依赖；不传则按 `--nodes` 顺序连接。
-- `--schema`: 可选的软件方法 schema 路径；默认使用 `skills/ysir-state/references/schemas/standard/schema.json`。若要初始化不展开 schema 的原始自定义图，传 `--schema none`。
+- `--schema`: 可选的软件方法 schema 名称；默认使用 `standard`，按 references/schemas/{schema}/schema.json 加载。若要初始化不展开 schema 的原始自定义图，传 `--schema none`。
 - `--human-acceptance`: 可选；为 `true` 时，在每个计划阶段末尾插入 `human-acceptance` 节点。
 - `--current`: 可选，当前节点；不传时默认使用展开后的第一个节点。
 
@@ -109,21 +118,31 @@ node skills/ysir-state/scripts/state.js advance \
   --note "Electron 框架已搭建"
 ```
 
-### 4. 手动修正节点状态
+### 4. 追加下一轮 attempt
 
-当当前节点失败且需要改动实现，导致后续验收必须从头开始时，使用 `retry`。`retry` 只支持使用 schema 展开的状态图。
+当当前节点需要进入同一 `phase` 的下一轮子图时，使用 `next-attempt`。常见场景包括当前节点失败需要返工，或当前 attempt 已完成但 schema 要求继续下一个最小行为。`next-attempt` 只支持使用 schema 展开的状态图。
 
 ```bash
-node skills/ysir-state/scripts/state.js retry \
+node skills/ysir-state/scripts/state.js next-attempt \
   --state .report/in-progress/{task}/state.json \
+  --status failed \
   --note "代码审查发现结构问题，需要修改实现"
 ```
 
-`retry` 会自动:
+若当前 attempt 已完成但需要继续下一轮，例如 TDD 进入下一个最小行为:
 
-- 将当前节点标记为 `failed`。
+```bash
+node skills/ysir-state/scripts/state.js next-attempt \
+  --state .report/in-progress/{task}/state.json \
+  --status completed \
+  --note "继续下一个最小行为"
+```
+
+`next-attempt` 会自动:
+
+- 将当前节点标记为 `--status` 指定的状态。
 - 追加同一 `phase` 的下一轮 attempt 子图。
-- 将失败节点指向新 attempt 的起点。
+- 将当前节点指向新 attempt 的起点。
 - 将原 phase 尾部的后继阶段边迁移到新 attempt 的尾部。
 - 将 `current` 指向新 attempt 的第一个节点。
 
@@ -149,8 +168,8 @@ node skills/ysir-state/scripts/state.js set \
 ### 6. 使用约束
 
 - 节点、边、状态含义由调用技能定义。
-- 脚本只做初始化、读取、推进、重试和必要状态修正。
+- 脚本只做初始化、读取、推进、追加下一轮 attempt 和必要状态修正。
 - 门禁判断由调用技能基于状态图、需求文档、计划文档和项目规范完成。
 - 正常阶段完成后使用 `advance` 推进；`set` 只用于人工修正、阻塞标记或补充状态。
-- 当前节点失败且需要重新从实现开始时，使用 `retry` 追加新 attempt，不在图中回退或成环。
+- 当前节点失败或 schema 要求继续下一轮时，使用 `next-attempt` 追加新 attempt，不在图中回退或成环。
 - `note` 只记录简短说明，不写长篇报告正文。

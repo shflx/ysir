@@ -92,7 +92,7 @@ async function main() {
   assertIncludes(planContent, "## 方案目标", planPath, errors);
   assertIncludes(planContent, "## 输入依据", planPath, errors);
   assertIncludes(planContent, "## 实现策略", planPath, errors);
-  assertIncludes(planContent, "## 软件方法 schema", planPath, errors);
+  assertIncludes(planContent, "## 执行方法", planPath, errors);
   assertIncludes(planContent, "## 改动范围", planPath, errors);
   assertIncludes(planContent, "## 验证策略", planPath, errors);
   assertIncludes(planContent, "## 分迭代的实现计划", planPath, errors);

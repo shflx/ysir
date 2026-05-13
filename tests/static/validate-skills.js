@@ -61,6 +61,20 @@ function toRepoRelative(filePath) {
   return path.relative(REPO_ROOT, filePath) || ".";
 }
 
+function validateConfigureDefaults(errors) {
+  const skillPath = path.join(SKILLS_DIR, "ysir-configure/SKILL.md");
+  const templatePath = path.join(SKILLS_DIR, "ysir-configure/references/ysir.yaml");
+  const skillContent = readFile(skillPath);
+  const templateContent = readFile(templatePath);
+
+  if (!templateContent.includes("developmentMethod: standard")) {
+    errors.push("skills/ysir-configure/references/ysir.yaml: 缺少默认 developmentMethod: standard");
+  }
+  if (!skillContent.includes("standard") || !skillContent.includes("tdd")) {
+    errors.push("skills/ysir-configure/SKILL.md: 需要说明 developmentMethod 可选 standard/tdd");
+  }
+}
+
 // 静态校验覆盖技能元数据和引用路径。
 function main() {
   const errors = [];
@@ -103,6 +117,7 @@ function main() {
       }
     }
   }
+  validateConfigureDefaults(errors);
 
   if (errors.length > 0) {
     console.error("YSIR static validation failed:\n");
