@@ -1,6 +1,6 @@
 ---
 name: ysir-configure
-description: 管理项目级 ysir.yaml 配置，用于控制 human-in-the-loop 行为和软件开发方法，包括需求澄清、需求确认、计划确认、人工验收和 standard/tdd 流程。
+description: 管理项目级 ysir.yaml 配置，用于控制 human-in-the-loop 行为和软件开发方法，包括参与设计、需求澄清、需求确认、计划确认、人工验收和 standard/tdd 流程。
 ---
 
 # ysir-configure
@@ -24,21 +24,28 @@ ysir.yaml
 ```yaml
 developmentMethod: standard
 humanInTheLoop:
+  designParticipation:
+    enabled: false
   requirementClarification:
-    enabled: true
+    enabled: false
   requirementConfirmation:
-    enabled: true
+    enabled: false
   planConfirmation:
-    enabled: true
+    enabled: false
   acceptance:
-    enabled: true
+    enabled: false
 ```
 
+完整默认配置见 [`references/ysir.yaml`](./references/ysir.yaml)。
+
 - `developmentMethod`: 软件开发方法；可选 `standard` 或 `tdd`，默认 `standard`。
+- `designParticipation`: 参与设计；开启后，项目设计或重要机制设计需要让用户参与关键设计取舍。
 - `requirementClarification`: 需求澄清；开启后，允许通过多次询问把需求梳理清楚。
 - `requirementConfirmation`: 需求确认；开启后，需求文档产出后必须让用户检查确认。
 - `planConfirmation`: 计划确认；开启后，实现方案计划产出后必须让用户检查确认。
 - `acceptance`: 人工验收；开启后，在交付成果需要人工判断时让用户验收。
+
+除 `developmentMethod` 外，所有 human-in-the-loop 开关默认关闭；未配置字段按关闭处理。
 
 ## 使用方式
 
@@ -58,10 +65,11 @@ humanInTheLoop:
 请确认 YSIR 的项目策略配置：
 
 1. 软件开发方法：使用 standard 还是 tdd？默认 standard
-2. 需求澄清：是否允许通过多次询问梳理清楚需求？默认开启
-3. 需求确认：需求文档产出后是否需要你检查确认？默认开启
-4. 计划确认：实现方案计划产出后是否需要你检查确认？默认开启
-5. 人工验收：交付成果需要人工判断时是否需要你验收？默认开启
+2. 参与设计：项目设计或重要机制设计时是否需要你参与关键取舍？默认关闭
+3. 需求澄清：是否允许通过多次询问梳理清楚需求？默认关闭
+4. 需求确认：需求文档产出后是否需要你检查确认？默认关闭
+5. 计划确认：实现方案计划产出后是否需要你检查确认？默认关闭
+6. 人工验收：交付成果需要人工判断时是否需要你验收？默认关闭
 
 可直接回复“使用默认配置”，或按项说明要关闭/开启哪些配置。
 ```
@@ -86,4 +94,4 @@ humanInTheLoop:
 - `ysir.yaml` 是项目级配置，应放在仓库根目录。
 - 不要把配置项写入各个需求文档；其它技能按需读取 `ysir.yaml`。
 - `developmentMethod` 只能使用 `standard` 或 `tdd`；未配置时按 `standard` 处理。
-- 未配置的字段使用默认值；若文件缺失，则先完成首次配置并落地配置文件。
+- 未配置的 human-in-the-loop 字段按关闭处理；若文件缺失，则先完成首次配置并落地配置文件。

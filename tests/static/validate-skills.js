@@ -70,8 +70,23 @@ function validateConfigureDefaults(errors) {
   if (!templateContent.includes("developmentMethod: standard")) {
     errors.push("skills/ysir-configure/references/ysir.yaml: 缺少默认 developmentMethod: standard");
   }
+  for (const field of [
+    "designParticipation",
+    "requirementClarification",
+    "requirementConfirmation",
+    "planConfirmation",
+    "acceptance",
+  ]) {
+    const fieldPattern = new RegExp(`${field}:\\n\\s+enabled: false`);
+    if (!fieldPattern.test(templateContent)) {
+      errors.push(`skills/ysir-configure/references/ysir.yaml: ${field} 默认应关闭`);
+    }
+  }
   if (!skillContent.includes("standard") || !skillContent.includes("tdd")) {
     errors.push("skills/ysir-configure/SKILL.md: 需要说明 developmentMethod 可选 standard/tdd");
+  }
+  if (!skillContent.includes("参与设计")) {
+    errors.push("skills/ysir-configure/SKILL.md: 需要说明参与设计配置");
   }
 }
 

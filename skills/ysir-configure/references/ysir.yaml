@@ -1,10 +1,12 @@
 developmentMethod: standard
 humanInTheLoop:
+  designParticipation:
+    enabled: false
   requirementClarification:
-    enabled: true
+    enabled: false
   requirementConfirmation:
-    enabled: true
+    enabled: false
   planConfirmation:
-    enabled: true
+    enabled: false
   acceptance:
-    enabled: true
+    enabled: false
