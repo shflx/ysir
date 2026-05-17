@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-evolve"
+  short_description: "记录用户的编程习惯、风格与偏好"
+  default_prompt: "使用 $ysir-evolve 记录用户的编程习惯、风格与偏好"

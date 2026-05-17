@@ -1,4 +1,6 @@
 developmentMethod: standard
+evolve:
+  enabled: true
 humanInTheLoop:
   designParticipation:
     enabled: false

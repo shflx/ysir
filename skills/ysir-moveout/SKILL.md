@@ -127,4 +127,12 @@ node skills/ysir-state/scripts/state.js next-attempt \
 
 - 将 `.report/in-progress/{task}/` 移动到 `.report/done/{task}/`。
 - 不归档 `.report/design/` 下的长期设计文档。
-- 归档完成后，本次需求落地结束。
+- 归档完成后，进入步骤 6 自进化处理。
+
+### 6. 自进化处理
+
+归档完成后，若 `ysir.yaml` 中 `evolve.enabled` 未配置或为 `true`，调用 `ysir-evolve` 执行 `process` 动作。
+
+处理完成后，本次需求落地结束。
+
+若 `evolve.enabled` 为 `false`，跳过本步骤，本次需求落地结束。

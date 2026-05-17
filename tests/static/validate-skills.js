@@ -7,6 +7,8 @@ const path = require("node:path");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const SKILLS_DIR = path.join(REPO_ROOT, "skills");
+const CONFIGURE_DIR = path.join(SKILLS_DIR, "ysir-configure");
+const EVOLVE_DIR = path.join(SKILLS_DIR, "ysir-evolve");
 
 function readFile(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -62,13 +64,33 @@ function toRepoRelative(filePath) {
 }
 
 function validateConfigureDefaults(errors) {
-  const skillPath = path.join(SKILLS_DIR, "ysir-configure/SKILL.md");
-  const templatePath = path.join(SKILLS_DIR, "ysir-configure/references/ysir.yaml");
+  const skillPath = path.join(CONFIGURE_DIR, "SKILL.md");
+  const evolveSkillPath = path.join(EVOLVE_DIR, "SKILL.md");
+  const regulationSkillPath = path.join(SKILLS_DIR, "ysir-regulation/SKILL.md");
+  const moveoutSkillPath = path.join(SKILLS_DIR, "ysir-moveout/SKILL.md");
+  const templatePath = path.join(CONFIGURE_DIR, "references/ysir.yaml");
+  const registerScriptPath = path.join(EVOLVE_DIR, "scripts/register-user-prompt-hook.js");
+  const captureScriptPath = path.join(EVOLVE_DIR, "scripts/user-prompt-submit-capture.js");
+  const queueScriptPath = path.join(EVOLVE_DIR, "scripts/user-prompt-queue.js");
+  const evolveTemplatePath = path.join(EVOLVE_DIR, "references/evolve.md");
   const skillContent = readFile(skillPath);
+  const evolveSkillContent = readFile(evolveSkillPath);
+  const registerScriptContent = fs.existsSync(registerScriptPath)
+    ? readFile(registerScriptPath)
+    : "";
+  const queueScriptContent = fs.existsSync(queueScriptPath)
+    ? readFile(queueScriptPath)
+    : "";
+  const evolveTemplateContent = readFile(evolveTemplatePath);
+  const regulationSkillContent = readFile(regulationSkillPath);
+  const moveoutSkillContent = readFile(moveoutSkillPath);
   const templateContent = readFile(templatePath);
 
   if (!templateContent.includes("developmentMethod: standard")) {
     errors.push("skills/ysir-configure/references/ysir.yaml: 缺少默认 developmentMethod: standard");
+  }
+  if (!/evolve:\n\s+enabled: true/.test(templateContent)) {
+    errors.push("skills/ysir-configure/references/ysir.yaml: 缺少默认开启的 evolve.enabled");
   }
   for (const field of [
     "designParticipation",
@@ -87,6 +109,62 @@ function validateConfigureDefaults(errors) {
   }
   if (!skillContent.includes("参与设计")) {
     errors.push("skills/ysir-configure/SKILL.md: 需要说明参与设计配置");
+  }
+  if (!skillContent.includes("不是业务功能配置") || !skillContent.includes("默认配置含义")) {
+    errors.push("skills/ysir-configure/SKILL.md: 首次配置前需要解释 ysir.yaml 和默认配置含义");
+  }
+  if (!skillContent.includes("UserPromptSubmit") || !skillContent.includes(".codex/hooks.json")) {
+    errors.push("skills/ysir-configure/SKILL.md: 需要说明 UserPromptSubmit hook 注册");
+  }
+  if (
+    !skillContent.includes(".codex/user-prompt-submit-capture.js") ||
+    !evolveSkillContent.includes(".codex/user-prompt-submit-capture.js") ||
+    !registerScriptContent.includes('path.join(".codex", CAPTURE_SCRIPT_NAME)')
+  ) {
+    errors.push("ysir-evolve hook 安装位置必须收敛到项目级 .codex 目录");
+  }
+  if (
+    skillContent.includes("hooks/user-prompt-submit-capture.js") ||
+    evolveSkillContent.includes("hooks/user-prompt-submit-capture.js")
+  ) {
+    errors.push("技能文档不应再要求创建项目根目录 hooks/user-prompt-submit-capture.js");
+  }
+  if (!fs.existsSync(registerScriptPath)) {
+    errors.push("skills/ysir-evolve/scripts/register-user-prompt-hook.js: 缺少 hook 注册脚本");
+  }
+  if (!fs.existsSync(captureScriptPath)) {
+    errors.push("skills/ysir-evolve/scripts/user-prompt-submit-capture.js: 缺少自进化事件记录脚本");
+  }
+  if (!fs.existsSync(queueScriptPath)) {
+    errors.push("skills/ysir-evolve/scripts/user-prompt-queue.js: 缺少自进化队列批处理脚本");
+  }
+  if (!evolveSkillContent.includes("自进化事件来源")) {
+    errors.push("skills/ysir-evolve/SKILL.md: 需要说明自进化事件来源");
+  }
+  if (
+    !evolveSkillContent.includes("不要在 Markdown 正文中记录完整来源") ||
+    !evolveTemplateContent.includes("处理成功后清理")
+  ) {
+    errors.push("skills/ysir-evolve: 需要说明 evolve.md 不记录完整来源且原始输入成功处理后清理");
+  }
+  if (!evolveSkillContent.includes("install") || !evolveSkillContent.includes("read") || !evolveSkillContent.includes("process")) {
+    errors.push("skills/ysir-evolve/SKILL.md: 需要说明 install/read/process 三类动作");
+  }
+  if (
+    !evolveSkillContent.includes("user-prompt-submit.processing.jsonl") ||
+    !evolveSkillContent.includes("snapshot") ||
+    !evolveSkillContent.includes("commit") ||
+    !queueScriptContent.includes("abort") ||
+    !queueScriptContent.includes("fs.renameSync(queuePath, processingPath)") ||
+    !queueScriptContent.includes("fs.unlinkSync(processingPath)")
+  ) {
+    errors.push("ysir-evolve process 必须按批次消费 user-prompt-submit.jsonl，并在成功后出队清理");
+  }
+  if (!regulationSkillContent.includes(".report/evolve.md")) {
+    errors.push("skills/ysir-regulation/SKILL.md: 需要把用户偏好与习惯作为规范来源");
+  }
+  if (!moveoutSkillContent.includes("自进化处理")) {
+    errors.push("skills/ysir-moveout/SKILL.md: 归档后需要触发自进化处理");
   }
 }
 
