@@ -64,6 +64,7 @@ function toRepoRelative(filePath) {
 }
 
 function validateConfigureDefaults(errors) {
+  const ysirSkillPath = path.join(SKILLS_DIR, "ysir/SKILL.md");
   const skillPath = path.join(CONFIGURE_DIR, "SKILL.md");
   const evolveSkillPath = path.join(EVOLVE_DIR, "SKILL.md");
   const regulationSkillPath = path.join(SKILLS_DIR, "ysir-regulation/SKILL.md");
@@ -73,6 +74,7 @@ function validateConfigureDefaults(errors) {
   const captureScriptPath = path.join(EVOLVE_DIR, "scripts/user-prompt-submit-capture.js");
   const queueScriptPath = path.join(EVOLVE_DIR, "scripts/user-prompt-queue.js");
   const evolveTemplatePath = path.join(EVOLVE_DIR, "references/evolve.md");
+  const ysirSkillContent = readFile(ysirSkillPath);
   const skillContent = readFile(skillPath);
   const evolveSkillContent = readFile(evolveSkillPath);
   const registerScriptContent = fs.existsSync(registerScriptPath)
@@ -110,8 +112,20 @@ function validateConfigureDefaults(errors) {
   if (!skillContent.includes("参与设计")) {
     errors.push("skills/ysir-configure/SKILL.md: 需要说明参与设计配置");
   }
-  if (!skillContent.includes("不是业务功能配置") || !skillContent.includes("默认配置含义")) {
-    errors.push("skills/ysir-configure/SKILL.md: 首次配置前需要解释 ysir.yaml 和默认配置含义");
+  if (
+    !skillContent.includes("不是业务功能配置") ||
+    !skillContent.includes("默认配置含义") ||
+    !skillContent.includes("必须完整发送以下固定提示") ||
+    !skillContent.includes("不得自行压缩或省略其中的用途说明、影响范围、默认配置含义和可回复方式")
+  ) {
+    errors.push("skills/ysir-configure/SKILL.md: 首次配置前需要完整解释 ysir.yaml 和默认配置含义，不得压缩提示");
+  }
+  if (
+    !ysirSkillContent.includes("`ysir.yaml` 不存在") ||
+    !ysirSkillContent.includes("完整使用 `ysir-configure` 中的固定首次配置提示") ||
+    !ysirSkillContent.includes("不得在本技能中自行概述、压缩或改写")
+  ) {
+    errors.push("skills/ysir/SKILL.md: 缺失 ysir.yaml 首次配置门禁，不能自行压缩配置提示");
   }
   if (!skillContent.includes("UserPromptSubmit") || !skillContent.includes(".codex/hooks.json")) {
     errors.push("skills/ysir-configure/SKILL.md: 需要说明 UserPromptSubmit hook 注册");

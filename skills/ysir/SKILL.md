@@ -15,7 +15,9 @@ description: 以高质量、可审计的方式完成端到端实现
 
 ## 工作流程
 
-先使用技能 `ysir-regulation` 学习项目规范，并使用 `ysir-configure` 了解当前 human-in-the-loop 配置，随后执行以下流程:
+先使用技能 `ysir-regulation` 学习项目规范，并使用 `ysir-configure` 了解当前 human-in-the-loop 配置，随后执行以下流程。
+
+若 `ysir.yaml` 不存在，必须停在 `ysir-configure` 的首次配置步骤，并完整使用 `ysir-configure` 中的固定首次配置提示向用户说明 `ysir.yaml` 的用途和默认配置含义；不得在本技能中自行概述、压缩或改写为简短确认话术。
 
 ### 1.项目设计
 
