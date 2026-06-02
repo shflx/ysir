@@ -151,6 +151,11 @@ function main() {
     "schema init output should include regulation reading in current objective",
     errors
   );
+  assert(
+    schemaInit.stdout.includes("currentSubagent: true"),
+    "schema init output should include current subagent mode",
+    errors
+  );
 
   const schemaCycleStatePath = path.join(schemaTaskDir, "cycle-state.json");
   const schemaCycleInit = run([
@@ -184,6 +189,8 @@ function main() {
     "expanded node should include schema objective",
     errors
   );
+  assert(schemaState.nodes["setup-electron:develop"].subagent === true, "develop node should enable subagent mode", errors);
+  assert(schemaState.nodes["setup-electron:delivery-commit"].subagent === false, "delivery commit node should disable subagent mode", errors);
   assert(
     schemaState.edges.some((edge) => edge.from === "setup-electron:delivery-commit" && edge.to === "implement-main-window:develop"),
     "schema init should connect adjacent expanded phases",
@@ -211,6 +218,8 @@ function main() {
     "tdd red stage should require one minimal behavior",
     errors
   );
+  assert(tddState.nodes["implement-parser:red-test"].subagent === true, "tdd red stage should enable subagent mode", errors);
+  assert(tddState.nodes["implement-parser:delivery-commit"].subagent === false, "tdd delivery commit should disable subagent mode", errors);
   assert(
     tddState.edges.some((edge) => edge.from === "implement-parser:red-test" && edge.to === "implement-parser:green-implementation"),
     "tdd schema should connect red to green",
@@ -252,6 +261,7 @@ function main() {
   const nextAttemptedTddState = JSON.parse(fs.readFileSync(tddStatePath, "utf8"));
   assert(nextAttemptedTddState.current === "implement-parser@2:red-test", "tdd next-attempt should move current to next attempt red test", errors);
   assert(nextAttemptedTddState.nodes["implement-parser:quality-review"].status === "completed", "tdd next-attempt should mark current node with provided status", errors);
+  assert(nextAttemptedTddState.nodes["implement-parser@2:red-test"].subagent === true, "tdd next-attempt should preserve subagent mode on new nodes", errors);
   assert(
     nextAttemptedTddState.edges.some((edge) => edge.from === "implement-parser:quality-review" && edge.to === "implement-parser@2:red-test"),
     "tdd next-attempt should connect current node to next attempt red test",
@@ -316,6 +326,11 @@ function main() {
   assert(
     humanAcceptanceState.nodes["setup-electron:human-acceptance"].stage === "human-acceptance",
     "human acceptance node should use stage metadata",
+    errors
+  );
+  assert(
+    humanAcceptanceState.nodes["setup-electron:human-acceptance"].subagent === false,
+    "human acceptance node should disable subagent mode",
     errors
   );
   assert(
@@ -412,6 +427,7 @@ function main() {
   assert(nextAttemptedState.nodes["setup-electron:acceptance-review"].status === "failed", "next-attempt should mark current node with provided status", errors);
   assert(nextAttemptedState.nodes["setup-electron@2:develop"].status === "current", "next-attempt start should be current", errors);
   assert(nextAttemptedState.nodes["setup-electron@2:develop"].attempt === 2, "next-attempt nodes should include attempt metadata", errors);
+  assert(nextAttemptedState.nodes["setup-electron@2:develop"].subagent === true, "next-attempt nodes should preserve subagent mode", errors);
   assert(nextAttemptedState.nodes["setup-electron@2:acceptance-review"].attemptOf === "setup-electron:acceptance-review", "next-attempt nodes should reference original node", errors);
   assert(
     nextAttemptedState.edges.some((edge) => edge.from === "setup-electron:acceptance-review" && edge.to === "setup-electron@2:develop"),

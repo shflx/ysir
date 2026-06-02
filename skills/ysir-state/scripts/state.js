@@ -127,6 +127,15 @@ function makeTemplatePath(schemaDir, templatePath) {
   return path.join(schemaDir, templatePath).split(path.sep).join("/");
 }
 
+function assertSubagentMode(subStage, schemaInfo) {
+  if (!Object.prototype.hasOwnProperty.call(subStage, "subagent")) {
+    return;
+  }
+  if (typeof subStage.subagent !== "boolean") {
+    fail(`schema subStages[].subagent 必须是布尔值: ${schemaInfo.displayPath}`);
+  }
+}
+
 function expandSubStage(phaseId, subStage, schemaDir) {
   return {
     id: `${phaseId}:${subStage.id}`,
@@ -137,6 +146,7 @@ function expandSubStage(phaseId, subStage, schemaDir) {
     ...(subStage.template
       ? { template: makeTemplatePath(schemaDir, subStage.template) }
       : {}),
+    ...(typeof subStage.subagent === "boolean" ? { subagent: subStage.subagent } : {}),
   };
 }
 
@@ -152,6 +162,7 @@ function expandHumanAcceptanceStage(phaseId, attempt = 1) {
     stage: HUMAN_ACCEPTANCE_STAGE,
     label: "人工验收",
     objective: "等待用户对当前计划阶段成果进行人工验收；用户确认后继续推进。",
+    subagent: false,
     ...(attempt > 1
       ? {
         attempt,
@@ -247,6 +258,7 @@ function expandSchema(nodes, phaseEdges, schemaInfo, options = {}) {
       if (!subStage.id) {
         fail(`schema subStages 存在缺少 id 的条目: ${schemaInfo.displayPath}`);
       }
+      assertSubagentMode(subStage, schemaInfo);
       expandedNodes.push(expandSubStage(phaseId, subStage, schemaDir));
     }
     if (options.humanAcceptance) {
@@ -492,6 +504,7 @@ function nextAttemptNode(state, args) {
     if (!subStage.id) {
       fail(`schema subStages 存在缺少 id 的条目: ${schemaInfo.displayPath}`);
     }
+    assertSubagentMode(subStage, schemaInfo);
     const newNode = expandSubStage(`${phaseId}@${nextAttempt}`, subStage, schemaDir);
     const nodeId = makeAttemptNodeId(phaseId, nextAttempt, subStage.id);
     if (state.nodes[nodeId]) {
@@ -589,6 +602,7 @@ function printState(state) {
     console.log(`currentAttempt: ${currentNode.attempt || 1}`);
     console.log(`currentObjective: ${objective}`);
     console.log(`currentTemplate: ${currentNode.template || ""}`);
+    console.log(`currentSubagent: ${typeof currentNode.subagent === "boolean" ? currentNode.subagent : ""}`);
     const nextNodes = getNextNodes(state, state.current);
     console.log(`next: ${nextNodes.join(",")}`);
   }
@@ -601,8 +615,9 @@ function printState(state) {
     const attemptOf = attemptOfValue ? ` attemptOf=${attemptOfValue}` : "";
     const objective = node.objective ? ` objective=${node.objective}` : "";
     const template = node.template ? ` template=${node.template}` : "";
+    const subagent = typeof node.subagent === "boolean" ? ` subagent=${node.subagent}` : "";
     const note = node.note ? ` note=${node.note}` : "";
-    console.log(`- ${node.id} [${node.status}]${label}${attempt}${attemptOf}${objective}${template}${note}`);
+    console.log(`- ${node.id} [${node.status}]${label}${attempt}${attemptOf}${objective}${template}${subagent}${note}`);
   }
   console.log("");
   console.log("edges:");

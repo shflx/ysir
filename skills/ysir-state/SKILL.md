@@ -94,6 +94,8 @@ node skills/ysir-state/scripts/state.js show \
 
 `show` 会在 `currentObjective` 中动态拼接“先使用 `ysir-regulation` 了解与本次行动相关的规范”的前置目标。该内容只出现在读取输出中，不写入状态文件，也不作为独立机制或命令存在。
 
+若当前节点由 schema 子阶段展开且配置了 `subagent`，`show` 会输出 `currentSubagent: true|false`。该字段只表示是否使用 subagent 模式执行，不表示 subagent 身份、模型或工具配置。
+
 ### 3. 推进当前节点
 
 ```bash
