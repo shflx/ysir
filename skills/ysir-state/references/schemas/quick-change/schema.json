@@ -1,0 +1,44 @@
+{
+  "name": "quick-change",
+  "description": "小功能点快速改造流程：确认边界、快速实现、最小验证、提交代码。",
+  "subStages": [
+    {
+      "id": "scope-check",
+      "label": "边界确认",
+      "objective": "确认当前需求属于小范围快速改造：目标明确、影响边界清楚、无需完整方案拆解；若发现范围扩大或风险升高，应暂停推进并说明 quick-change 边界不成立，由上层 workflow 决定后续流程。",
+      "subagent": false
+    },
+    {
+      "id": "implement",
+      "label": "快速实现",
+      "objective": "在已确认的小范围边界内完成必要改动，不引入额外功能、无关重构或超出用户要求的行为变化。",
+      "subagent": true
+    },
+    {
+      "id": "verify",
+      "label": "最小验证",
+      "objective": "执行与本次改动直接相关的最小充分验证，并检查改动范围、明显回归和风险；若验证失败，应明确失败原因并推动返工。",
+      "subagent": true
+    },
+    {
+      "id": "delivery-commit",
+      "label": "交付：提交代码",
+      "objective": "提交本次快速改造对应的代码改动，并保留提交哈希或等价完成依据。",
+      "subagent": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "scope-check",
+      "to": "implement"
+    },
+    {
+      "from": "implement",
+      "to": "verify"
+    },
+    {
+      "from": "verify",
+      "to": "delivery-commit"
+    }
+  ]
+}

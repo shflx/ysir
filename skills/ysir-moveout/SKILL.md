@@ -19,21 +19,20 @@ description: 落地实现当前需求，并使用 ysir-state 状态图进行进�
 
 ## 工作流程
 
-若当前任务目录存在 `plan.md`，必须先阅读计划文档，明确本次需求的预计改动、分阶段交付边界和当前阶段目标；快速模式没有 `plan.md` 时，以用户指令和状态图当前节点为准。
+执行前以 `state.json` 为唯一进度入口；若当前任务目录存在 `plan.md`，可用于理解当前节点对应的业务边界，但不得用计划文档替代状态图判断进度。
 
 ### 1. 准备状态图
 
-若没有 `state.json`，且用户明确要求快速实现，可以跳过 `order.md` 和 `plan.md`，但仍必须先用 `ysir-state` 初始化一个最小状态图。快速模式默认使用 standard schema 展开子阶段:
+若没有 `state.json`，使用 `quick-change` schema 初始化一个最小状态图:
 
 ```bash
 node skills/ysir-state/scripts/state.js init \
   --state .report/in-progress/{task}/state.json \
-  --nodes "{当前快速实现阶段}"
+  --nodes "{当前快速改造事项}" \
+  --schema quick-change
 ```
 
-快速模式仅针对阻塞开发的关键问题向用户确认；如需汇报“已完成”或“已修复”，必须先执行对应的最小验证并更新状态图。
-
-若用户需要标准流程，应先使用 `ysir-plan` / `ysir-state` 初始化带 schema 的状态图。
+`quick-change` 的 `scope-check` 节点必须先确认当前事项确实目标明确、影响边界清楚、改动范围小且验证方式明确；若发现范围扩大或风险升高，应暂停推进并说明原因，不在 `ysir-moveout` 内自行切换 schema 或重启标准流程。
 
 ### 2. 读取当前节点
 

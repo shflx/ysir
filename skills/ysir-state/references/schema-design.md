@@ -56,6 +56,7 @@ references/schemas/
 
 - `standard`: 标准开发流程，按 `develop -> acceptance-test -> acceptance-review -> delivery-commit` 展开。
 - `tdd`: TDD 流程，按 `red-test -> green-implementation -> refactor -> quality-review -> delivery-commit` 展开；`quality-review` 判断是否继续下一个最小行为或返工，需要继续时使用 `next-attempt` 追加新 attempt，保持状态图有向无环。
+- `quick-change`: 小功能点快速改造流程，按 `scope-check -> implement -> verify -> delivery-commit` 展开；`scope-check` 用于确认是否仍适合快速路径，若范围扩大或风险升高，应暂停推进并交还上层 workflow 判断。
 
 ## 扩展边界
 

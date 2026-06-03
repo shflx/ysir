@@ -197,6 +197,32 @@ function main() {
     errors
   );
 
+  const quickChangeStatePath = path.join(schemaTaskDir, "quick-change-state.json");
+  const quickChangeInit = run([
+    "init",
+    "--state",
+    quickChangeStatePath,
+    "--nodes",
+    "rename-toolbar-button",
+    "--schema",
+    "quick-change",
+  ], fixtureDir);
+  assert(quickChangeInit.status === 0, `quick-change schema init failed:\n${quickChangeInit.stderr}`, errors);
+
+  const quickChangeState = JSON.parse(fs.readFileSync(quickChangeStatePath, "utf8"));
+  assert(quickChangeState.schema.name === "quick-change", "quick-change schema name should be quick-change", errors);
+  assert(Object.keys(quickChangeState.nodes).length === 4, "quick-change schema init should expand one phase into 4 nodes", errors);
+  assert(quickChangeState.current === "rename-toolbar-button:scope-check", "quick-change schema should start from scope-check", errors);
+  assert(quickChangeState.nodes["rename-toolbar-button:scope-check"].subagent === false, "quick-change scope-check should disable subagent mode", errors);
+  assert(quickChangeState.nodes["rename-toolbar-button:implement"].subagent === true, "quick-change implement should enable subagent mode", errors);
+  assert(quickChangeState.nodes["rename-toolbar-button:verify"].subagent === true, "quick-change verify should enable subagent mode", errors);
+  assert(quickChangeState.nodes["rename-toolbar-button:delivery-commit"].subagent === false, "quick-change delivery commit should disable subagent mode", errors);
+  assert(
+    quickChangeState.edges.some((edge) => edge.from === "rename-toolbar-button:scope-check" && edge.to === "rename-toolbar-button:implement"),
+    "quick-change schema should connect scope-check to implement",
+    errors
+  );
+
   const tddStatePath = path.join(schemaTaskDir, "tdd-state.json");
   const tddInit = run([
     "init",
