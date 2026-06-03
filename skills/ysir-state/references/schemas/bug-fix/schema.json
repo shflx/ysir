@@ -1,0 +1,44 @@
+{
+  "name": "bug-fix",
+  "description": "缺陷修复流程：问题定位、最小修复、回归验证、提交代码。",
+  "subStages": [
+    {
+      "id": "investigate",
+      "label": "问题定位",
+      "objective": "用最小可验证方式复现或确认缺陷现象，记录触发条件、失败输出或测试失败；基于证据定位根因，说明相关模块、边界或状态转换；不得在本节点修改代码，无法复现或根因不确定时应暂停推进并说明缺失证据。",
+      "subagent": true
+    },
+    {
+      "id": "fix",
+      "label": "最小修复",
+      "objective": "只针对已确认根因做必要修复，不引入额外功能、无关重构或超出缺陷范围的行为变化。",
+      "subagent": true
+    },
+    {
+      "id": "regression-test",
+      "label": "回归验证",
+      "objective": "重新执行复现路径和相关回归验证，确认原缺陷已修复且没有明显新回归；可行时补充防回归测试。",
+      "subagent": true
+    },
+    {
+      "id": "delivery-commit",
+      "label": "交付：提交代码",
+      "objective": "提交本次缺陷修复对应的代码改动，并保留提交哈希或等价完成依据。",
+      "subagent": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "investigate",
+      "to": "fix"
+    },
+    {
+      "from": "fix",
+      "to": "regression-test"
+    },
+    {
+      "from": "regression-test",
+      "to": "delivery-commit"
+    }
+  ]
+}

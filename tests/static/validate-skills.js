@@ -69,6 +69,7 @@ function validateConfigureDefaults(errors) {
   const evolveSkillPath = path.join(EVOLVE_DIR, "SKILL.md");
   const regulationSkillPath = path.join(SKILLS_DIR, "ysir-regulation/SKILL.md");
   const moveoutSkillPath = path.join(SKILLS_DIR, "ysir-moveout/SKILL.md");
+  const bugFixSchemaPath = path.join(SKILLS_DIR, "ysir-state/references/schemas/bug-fix/schema.json");
   const quickChangeSchemaPath = path.join(SKILLS_DIR, "ysir-state/references/schemas/quick-change/schema.json");
   const templatePath = path.join(CONFIGURE_DIR, "references/ysir.yaml");
   const registerScriptPath = path.join(EVOLVE_DIR, "scripts/register-user-prompt-hook.js");
@@ -87,6 +88,9 @@ function validateConfigureDefaults(errors) {
   const evolveTemplateContent = readFile(evolveTemplatePath);
   const regulationSkillContent = readFile(regulationSkillPath);
   const moveoutSkillContent = readFile(moveoutSkillPath);
+  const bugFixSchemaContent = fs.existsSync(bugFixSchemaPath)
+    ? readFile(bugFixSchemaPath)
+    : "";
   const quickChangeSchemaContent = fs.existsSync(quickChangeSchemaPath)
     ? readFile(quickChangeSchemaPath)
     : "";
@@ -187,11 +191,20 @@ function validateConfigureDefaults(errors) {
   if (!fs.existsSync(quickChangeSchemaPath)) {
     errors.push("skills/ysir-state/references/schemas/quick-change/schema.json: 缺少 quick-change schema");
   }
+  if (!fs.existsSync(bugFixSchemaPath)) {
+    errors.push("skills/ysir-state/references/schemas/bug-fix/schema.json: 缺少 bug-fix schema");
+  }
   if (
     !ysirSkillContent.includes("quick-change 路线") ||
     !ysirSkillContent.includes("直接使用 `ysir-state` 初始化 `quick-change` schema 状态图")
   ) {
     errors.push("skills/ysir/SKILL.md: 需要说明 quick-change 场景识别和路由");
+  }
+  if (
+    !ysirSkillContent.includes("bug-fix 路线") ||
+    !ysirSkillContent.includes("直接使用 `ysir-state` 初始化 `bug-fix` schema 状态图")
+  ) {
+    errors.push("skills/ysir/SKILL.md: 需要说明 bug-fix 场景识别和路由");
   }
   if (!moveoutSkillContent.includes("--schema quick-change")) {
     errors.push("skills/ysir-moveout/SKILL.md: 缺少 quick-change schema 初始化说明");
@@ -203,6 +216,14 @@ function validateConfigureDefaults(errors) {
     !quickChangeSchemaContent.includes('"id": "delivery-commit"')
   ) {
     errors.push("quick-change schema 需要包含 scope-check/implement/verify/delivery-commit 节点");
+  }
+  if (
+    !bugFixSchemaContent.includes('"id": "investigate"') ||
+    !bugFixSchemaContent.includes('"id": "fix"') ||
+    !bugFixSchemaContent.includes('"id": "regression-test"') ||
+    !bugFixSchemaContent.includes('"id": "delivery-commit"')
+  ) {
+    errors.push("bug-fix schema 需要包含 investigate/fix/regression-test/delivery-commit 节点");
   }
 }
 

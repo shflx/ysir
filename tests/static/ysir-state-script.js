@@ -223,6 +223,32 @@ function main() {
     errors
   );
 
+  const bugFixStatePath = path.join(schemaTaskDir, "bug-fix-state.json");
+  const bugFixInit = run([
+    "init",
+    "--state",
+    bugFixStatePath,
+    "--nodes",
+    "repair-login-error",
+    "--schema",
+    "bug-fix",
+  ], fixtureDir);
+  assert(bugFixInit.status === 0, `bug-fix schema init failed:\n${bugFixInit.stderr}`, errors);
+
+  const bugFixState = JSON.parse(fs.readFileSync(bugFixStatePath, "utf8"));
+  assert(bugFixState.schema.name === "bug-fix", "bug-fix schema name should be bug-fix", errors);
+  assert(Object.keys(bugFixState.nodes).length === 4, "bug-fix schema init should expand one phase into 4 nodes", errors);
+  assert(bugFixState.current === "repair-login-error:investigate", "bug-fix schema should start from investigate", errors);
+  assert(bugFixState.nodes["repair-login-error:investigate"].subagent === true, "bug-fix investigate should enable subagent mode", errors);
+  assert(bugFixState.nodes["repair-login-error:fix"].subagent === true, "bug-fix fix should enable subagent mode", errors);
+  assert(bugFixState.nodes["repair-login-error:regression-test"].subagent === true, "bug-fix regression-test should enable subagent mode", errors);
+  assert(bugFixState.nodes["repair-login-error:delivery-commit"].subagent === false, "bug-fix delivery commit should disable subagent mode", errors);
+  assert(
+    bugFixState.edges.some((edge) => edge.from === "repair-login-error:investigate" && edge.to === "repair-login-error:fix"),
+    "bug-fix schema should connect investigate to fix",
+    errors
+  );
+
   const tddStatePath = path.join(schemaTaskDir, "tdd-state.json");
   const tddInit = run([
     "init",
