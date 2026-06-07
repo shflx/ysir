@@ -1,0 +1,24 @@
+{
+  "name": "review-assist",
+  "description": "逐文件辅助代码审查流程：Agent 展示原始 diff 并给出审查判断，用户做最终文件级审查结论。",
+  "subStages": [
+    {
+      "id": "agent-review",
+      "label": "Agent 审查",
+      "objective": "读取当前文件的原始 git diff，完整展示给用户，并给出深入审查判断、风险和验证建议；不得替用户记录最终审查结论。",
+      "subagent": false
+    },
+    {
+      "id": "user-review",
+      "label": "用户审查",
+      "objective": "等待用户基于原始 diff 和 Agent 审查判断给出文件级结论；通过或跳过后进入下一个文件，未通过时进入当前文件下一轮审查。",
+      "subagent": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "agent-review",
+      "to": "user-review"
+    }
+  ]
+}

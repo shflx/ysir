@@ -1,0 +1,4 @@
+interface:
+  display_name: "ysir-review-assist"
+  short_description: "逐文件辅助审查 git 变更"
+  default_prompt: "使用 $ysir-review-assist 按文件逐步展示 git 变更，并记录我的审查结论。"

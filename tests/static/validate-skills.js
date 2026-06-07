@@ -71,6 +71,8 @@ function validateConfigureDefaults(errors) {
   const moveoutSkillPath = path.join(SKILLS_DIR, "ysir-moveout/SKILL.md");
   const bugFixSchemaPath = path.join(SKILLS_DIR, "ysir-state/references/schemas/bug-fix/schema.json");
   const quickChangeSchemaPath = path.join(SKILLS_DIR, "ysir-state/references/schemas/quick-change/schema.json");
+  const reviewAssistSchemaPath = path.join(SKILLS_DIR, "ysir-state/references/schemas/review-assist/schema.json");
+  const reviewAssistSkillPath = path.join(SKILLS_DIR, "ysir-review-assist/SKILL.md");
   const templatePath = path.join(CONFIGURE_DIR, "references/ysir.yaml");
   const registerScriptPath = path.join(EVOLVE_DIR, "scripts/register-user-prompt-hook.js");
   const captureScriptPath = path.join(EVOLVE_DIR, "scripts/user-prompt-submit-capture.js");
@@ -90,6 +92,12 @@ function validateConfigureDefaults(errors) {
   const moveoutSkillContent = readFile(moveoutSkillPath);
   const bugFixSchemaContent = fs.existsSync(bugFixSchemaPath)
     ? readFile(bugFixSchemaPath)
+    : "";
+  const reviewAssistSchemaContent = fs.existsSync(reviewAssistSchemaPath)
+    ? readFile(reviewAssistSchemaPath)
+    : "";
+  const reviewAssistSkillContent = fs.existsSync(reviewAssistSkillPath)
+    ? readFile(reviewAssistSkillPath)
     : "";
   const quickChangeSchemaContent = fs.existsSync(quickChangeSchemaPath)
     ? readFile(quickChangeSchemaPath)
@@ -194,6 +202,9 @@ function validateConfigureDefaults(errors) {
   if (!fs.existsSync(bugFixSchemaPath)) {
     errors.push("skills/ysir-state/references/schemas/bug-fix/schema.json: 缺少 bug-fix schema");
   }
+  if (!fs.existsSync(reviewAssistSchemaPath)) {
+    errors.push("skills/ysir-state/references/schemas/review-assist/schema.json: 缺少 review-assist schema");
+  }
   if (
     !ysirSkillContent.includes("quick-change 路线") ||
     !ysirSkillContent.includes("直接使用 `ysir-state` 初始化 `quick-change` schema 状态图")
@@ -224,6 +235,20 @@ function validateConfigureDefaults(errors) {
     !bugFixSchemaContent.includes('"id": "delivery-commit"')
   ) {
     errors.push("bug-fix schema 需要包含 investigate/fix/regression-test/delivery-commit 节点");
+  }
+  if (
+    !reviewAssistSchemaContent.includes('"id": "agent-review"') ||
+    !reviewAssistSchemaContent.includes('"id": "user-review"')
+  ) {
+    errors.push("review-assist schema 需要包含 agent-review/user-review 节点");
+  }
+  if (
+    !reviewAssistSkillContent.includes("展示审查页和审查判断的同一轮回复中，禁止执行 `agent-done`") ||
+    !reviewAssistSkillContent.includes("用户首次回复后") ||
+    !reviewAssistSkillContent.includes("同一轮连续推进两步") ||
+    !reviewAssistSkillContent.includes("执行 `mark` 前必须已经位于 `user-review`")
+  ) {
+    errors.push("skills/ysir-review-assist/SKILL.md: 需要说明 agent-done 必须延迟到用户首次回复后，并支持首次回复带结论时连续推进两步");
   }
 }
 

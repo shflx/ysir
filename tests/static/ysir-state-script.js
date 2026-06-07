@@ -249,6 +249,35 @@ function main() {
     errors
   );
 
+  const reviewAssistStatePath = path.join(schemaTaskDir, "review-assist-state.json");
+  const reviewAssistInit = run([
+    "init",
+    "--state",
+    reviewAssistStatePath,
+    "--nodes",
+    "file-001,file-002",
+    "--schema",
+    "review-assist",
+  ], fixtureDir);
+  assert(reviewAssistInit.status === 0, `review-assist schema init failed:\n${reviewAssistInit.stderr}`, errors);
+
+  const reviewAssistState = JSON.parse(fs.readFileSync(reviewAssistStatePath, "utf8"));
+  assert(reviewAssistState.schema.name === "review-assist", "review-assist schema name should be review-assist", errors);
+  assert(Object.keys(reviewAssistState.nodes).length === 4, "review-assist schema init should expand two files into 4 nodes", errors);
+  assert(reviewAssistState.current === "file-001:agent-review", "review-assist schema should start from first agent review", errors);
+  assert(reviewAssistState.nodes["file-001:agent-review"].subagent === false, "review-assist agent review should disable subagent mode", errors);
+  assert(reviewAssistState.nodes["file-001:user-review"].subagent === false, "review-assist user review should disable subagent mode", errors);
+  assert(
+    reviewAssistState.edges.some((edge) => edge.from === "file-001:agent-review" && edge.to === "file-001:user-review"),
+    "review-assist schema should connect agent review to user review",
+    errors
+  );
+  assert(
+    reviewAssistState.edges.some((edge) => edge.from === "file-001:user-review" && edge.to === "file-002:agent-review"),
+    "review-assist schema should connect adjacent file phases",
+    errors
+  );
+
   const tddStatePath = path.join(schemaTaskDir, "tdd-state.json");
   const tddInit = run([
     "init",
