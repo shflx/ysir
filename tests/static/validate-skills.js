@@ -196,6 +196,19 @@ function validateConfigureDefaults(errors) {
   if (!moveoutSkillContent.includes("自进化处理")) {
     errors.push("skills/ysir-moveout/SKILL.md: 归档后需要触发自进化处理");
   }
+  if (
+    !moveoutSkillContent.includes("向用户请求启用 subagent 能力") ||
+    !moveoutSkillContent.includes("不得用主 agent 直接实现、测试、审查或提交当前节点")
+  ) {
+    errors.push("skills/ysir-moveout/SKILL.md: subagent 默认不允许时必须请求用户启用，不能降级为主 agent 执行");
+  }
+  if (
+    !moveoutSkillContent.includes("规范遵守说明") ||
+    !moveoutSkillContent.includes("对照 `ysir-regulation` 说明本节点主要适用哪些约束") ||
+    !moveoutSkillContent.includes("缺少规范遵守说明，应要求补充后再推进状态图")
+  ) {
+    errors.push("skills/ysir-moveout/SKILL.md: subagent 返回结果必须包含规范遵守说明，缺失时不能推进状态图");
+  }
   if (!fs.existsSync(quickChangeSchemaPath)) {
     errors.push("skills/ysir-state/references/schemas/quick-change/schema.json: 缺少 quick-change schema");
   }

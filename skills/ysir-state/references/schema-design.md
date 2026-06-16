@@ -42,7 +42,7 @@ references/schemas/
 - `edges`: 子阶段之间的有向边，只引用 `subStages[].id`。
 - `objective`: 子阶段目标，说明执行该阶段应完成什么。
 - `template`: 可选，指向同 schema 目录下的阶段产物模板；模板只用于产物格式辅助，不是 schema 的主要目标。
-- `subagent`: 可选布尔值，表示该子阶段是否使用 subagent 模式执行；`true` 表示调用技能必须分派 subagent，`false` 表示允许主 agent 直接处理，未配置则由调用技能沿用默认策略。
+- `subagent`: 可选布尔值，表示该子阶段是否使用 subagent 模式执行；`true` 表示调用技能必须分派 subagent，`false` 表示允许主 agent 直接处理，未配置则由调用技能沿用默认策略。若当前 Agent 默认不允许启动 subagent，调用技能必须先向用户请求启用 subagent 能力，不得把 `subagent: true` 的节点降级为主 agent 执行。
 
 ## 展开规则
 

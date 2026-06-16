@@ -55,7 +55,7 @@ node skills/ysir-state/scripts/state.js show \
 ### 3. 执行当前节点
 
 - 若当前节点 `stage` 为 `human-acceptance`，不要启动 subagent；直接暂停并请求用户验收当前计划阶段成果。用户确认通过后使用 `advance` 推进状态图；用户不通过且需要返工时使用 `next-attempt --status failed`。
-- 若当前节点 `subagent` / `currentSubagent` 为 `true`，主 agent 在执行任何当前节点工程工作前，必须先为该 `current` 节点启动 subagent；不得用主 agent 直接实现、测试、审查或提交当前节点。
+- 若当前节点 `subagent` / `currentSubagent` 为 `true`，主 agent 在执行任何当前节点工程工作前，必须先为该 `current` 节点启动 subagent；不得用主 agent 直接实现、测试、审查或提交当前节点。若当前 Agent 环境默认不允许启动 subagent，应暂停当前节点执行，向用户请求启用 subagent 能力；用户启用后再继续分派。
 - 若当前节点 `subagent` / `currentSubagent` 为 `false`，主 agent 可以直接执行该节点，但仍必须遵守当前节点边界、完成必要验证，并在完成后更新状态图。
 - 若当前节点没有配置 `subagent`，默认按 subagent 模式执行，以兼容旧状态图和旧 schema。
 - 当 subagent 模式启用时，主 agent 向 subagent 提供当前节点 ID、`phase`、`stage` / `label`、`objective`、`template`、前后依赖、相关需求/计划/设计上下文和完成标准，不要指导 subagent 具体该怎么做。
@@ -63,8 +63,8 @@ node skills/ysir-state/scripts/state.js show \
 - 当 subagent 模式启用时，subagent 只执行当前节点对应工作；不得跳到后继节点，不得更新 `state.json`，不得改写与当前节点无关的内容。
 - 当 subagent 模式启用且节点存在 `template` 时，subagent 按需读取模板并用于阶段产物格式。
 - 当 subagent 模式启用且节点需要测试、审查、提交或其它验证时，subagent 必须实际执行对应动作并返回证据。
-- 当 subagent 模式启用时，subagent 返回结果必须说明完成情况、关键改动、验证命令或证据、遗留问题；涉及代码改动时必须列出改动文件。
-- 当 subagent 模式启用时，主 agent 验收 subagent 结果；只有 subagent 完成当前节点要求的实现、验证或产物后，才进入状态图更新。
+- 当 subagent 模式启用时，subagent 返回结果必须说明完成情况、规范遵守说明、关键改动、验证命令或证据、遗留问题；涉及代码改动时必须列出改动文件。规范遵守说明应对照 `ysir-regulation` 说明本节点主要适用哪些约束，以及是否存在偏离；不适用时说明原因。
+- 当 subagent 模式启用时，主 agent 验收 subagent 结果；只有 subagent 完成当前节点要求的实现、验证或产物后，才进入状态图更新。若 subagent 返回结果缺少规范遵守说明，应要求补充后再推进状态图。
 - 当 subagent 模式启用但 subagent 未完成当前节点时，主 agent 不得自行补做节点工作；应继续分派 subagent、按 `next-attempt --status failed` 表达返工，或在冲突阻塞时暂停确认。
 - 若发现需求、计划或设计冲突，暂停并向用户确认。
 
