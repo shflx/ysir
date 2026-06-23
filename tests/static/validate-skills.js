@@ -196,6 +196,9 @@ function validateConfigureDefaults(errors) {
   if (!moveoutSkillContent.includes("自进化处理")) {
     errors.push("skills/ysir-moveout/SKILL.md: 归档后需要触发自进化处理");
   }
+  if (!moveoutSkillContent.includes("验收通过后仍需继续推进状态图，完成后续归档处理")) {
+    errors.push("skills/ysir-moveout/SKILL.md: 人工验收时需要提示用户验收通过后仍需继续归档处理");
+  }
   if (
     !moveoutSkillContent.includes("向用户请求启用 subagent 能力") ||
     !moveoutSkillContent.includes("不得用主 agent 直接实现、测试、审查或提交当前节点")
